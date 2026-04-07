@@ -8,6 +8,7 @@ Streamline your Git workflow with smart aliases and automatic commit message gen
 
 ## Features
 
+- `git init-flow` — initialize GitFlow on a repo that only has `main`
 - `git start` — create a branch from the correct base (`main` or `develop`) based on type
 - `git c` — stage-aware AI commit message generator with bullet-point context
 - `git finish` — AI-generated merge commit, auto `Close #issue`, optional tag on release/hotfix
@@ -41,7 +42,7 @@ gemini  # first run → login with your Google account
 ### 2. Clone this repository
 
 ```bash
-git clone https://github.com/iamantoniodinuzzo/git-ai-flow.git
+git clone https://github.com/YOUR_USERNAME/git-ai-flow.git
 ```
 
 ### 3. Copy the scripts
@@ -64,10 +65,17 @@ chmod +x ~/.git-scripts/git-finish.sh
 
 ### 4. Add aliases to your `.gitconfig`
 
-Open `~/.gitconfig` and add the content from `gitconfig-aliases.ini` provided in this repo, or run:
+Open `~/.gitconfig` and add the content from `gitconfig-aliases.ini`, or run:
 
 ```bash
 cat git-ai-flow/gitconfig-aliases.ini >> ~/.gitconfig
+```
+
+Then set your identity (if not already configured globally):
+
+```bash
+git config --global user.name "Your Name"
+git config --global user.email "you@example.com"
 ```
 
 > **Note:** On Windows `~` resolves to `C:\Users\YourName\`.
@@ -101,6 +109,17 @@ release/2.1.0
 ---
 
 ## Usage
+
+### Initialize GitFlow on a new repo
+
+If your repository only has `main` (freshly created on GitHub), run this once before anything else:
+
+```bash
+git init-flow
+# ✅ Branch develop creato e pushato su origin
+```
+
+All subsequent commands will work normally. The only exception is `git start hotfix` and `git start support`, which can run without `develop` — but `git finish` on a hotfix still needs it, so running `init-flow` first is always the safest choice.
 
 ### Start a branch
 
@@ -151,6 +170,22 @@ git publish        # push current branch to origin
 git st-flow        # list active flow branches
 git sync           # checkout develop + pull
 ```
+
+---
+
+## `develop` branch requirement
+
+GitFlow requires `develop` to exist for almost every operation. The only exception is `support`, which interacts exclusively with `main`.
+
+| Type | Needs `develop` for `start` | Needs `develop` for `finish` |
+|---|---|---|
+| `feature` | ✅ | ✅ |
+| `bugfix` | ✅ | ✅ |
+| `release` | ✅ | ✅ |
+| `hotfix` | ❌ (starts from `main`) | ✅ (merges back) |
+| `support` | ❌ | ❌ |
+
+Both `git start` and `git finish` will show a clear error if `develop` is missing, with instructions to run `git init-flow`.
 
 ---
 

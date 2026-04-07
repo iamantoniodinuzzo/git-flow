@@ -22,6 +22,12 @@ case "$TYPE" in
   *)       BASE=develop; TARGETS="develop" ;;
 esac
 
+# Verifica che develop esista (serve per tutti i tipi tranne support)
+if [ "$TYPE" != "support" ] && ! git show-ref --verify --quiet refs/heads/develop; then
+  echo "❌ Branch 'develop' non esiste. Esegui prima: git init-flow"
+  exit 1
+fi
+
 echo "🔍 Branch: $CURRENT → merge in: $TARGETS"
 echo ""
 
