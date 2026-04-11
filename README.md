@@ -1,223 +1,125 @@
-# git-ai-flow
+# git-ai-flow 🤖
 
-> Git Flow aliases and AI-powered commit utilities using Gemini CLI.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![CI](https://github.com/tonydetony/git-ai-flow/actions/workflows/ci.yml/badge.svg)](https://github.com/tonydetony/git-ai-flow/actions)
 
-Streamline your Git workflow with smart aliases and automatic commit message generation via **Gemini CLI**. Every commit follows [Conventional Commits](https://www.conventionalcommits.org/) and automatically references the related GitHub issue.
+A lightweight GitFlow toolkit integrated with **Gemini CLI** for AI-assisted commit and merge messages.
 
----
+## Table of Contents
+- [Features](#features)
+- [Requirements](#requirements)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Troubleshooting](#troubleshooting)
 
 ## Features
-
-- `git init-flow` — initialize GitFlow on a repo that only has `main`
-- `git start` — create a branch from the correct base (`main` or `develop`) based on type
-- `git c` — stage-aware AI commit message generator with bullet-point context
-- `git finish` — AI-generated merge commit, auto `Close #issue`, optional tag on release/hotfix
-- `git publish` — push current branch to origin
-- `git st-flow` — list all active flow branches
-- `git sync` — pull latest develop
-
----
+- **Smart Commits:** Generates Conventional Commits messages based on your staged diff.
+- **Automated Merges:** Creates detailed merge summaries with issue references (e.g., `Close #123`).
+- **Clean GitFlow:** Ready-to-use aliases for starting and finishing features, bugfixes, releases, and hotfixes.
+- **Issue Integration:** Automatically extracts issue numbers from branch names.
 
 ## Requirements
-
-| Tool | Notes |
-|---|---|
-| [Git for Windows](https://git-scm.com/download/win) | Includes Git Bash |
-| [Node.js](https://nodejs.org/) | Required by Gemini CLI |
-| [Gemini CLI](https://github.com/google-gemini/gemini-cli) | `npm install -g @google/gemini-cli` |
-
-> **macOS / Linux:** all tools work natively. Use your terminal instead of Git Bash.
-
----
+- **Git** (tested on 2.40+)
+- **Bash** (v4.0+)
+- **[Gemini CLI](https://github.com/google/gemini-cli)** (logged in and working)
 
 ## Installation
 
-### 1. Install Gemini CLI and authenticate
-
+### 1. Clone the repository
 ```bash
-npm install -g @google/gemini-cli
-gemini  # first run → login with your Google account
+git clone https://github.com/tonydetony/git-ai-flow.git
+cd git-ai-flow
 ```
 
-### 2. Clone this repository
+### 2. Prepare the scripts directory
 
-```bash
-git clone https://github.com/YOUR_USERNAME/git-ai-flow.git
-```
-
-### 3. Copy the scripts
-
-**Windows (Git Bash):**
+#### 🍎 macOS / 🐧 Linux
 ```bash
 mkdir -p ~/.git-scripts
-cp git-ai-flow/scripts/git-commit.sh ~/.git-scripts/
-cp git-ai-flow/scripts/git-finish.sh ~/.git-scripts/
+cp scripts/git-commit-script.sh ~/.git-scripts/git-commit.sh
+cp scripts/git-finish-script.sh ~/.git-scripts/git-finish.sh
+chmod +x ~/.git-scripts/*.sh
 ```
 
-**macOS / Linux:**
-```bash
-mkdir -p ~/.git-scripts
-cp git-ai-flow/scripts/git-commit.sh ~/.git-scripts/
-cp git-ai-flow/scripts/git-finish.sh ~/.git-scripts/
-chmod +x ~/.git-scripts/git-commit.sh
-chmod +x ~/.git-scripts/git-finish.sh
+#### 🪟 Windows (PowerShell)
+```powershell
+New-Item -ItemType Directory -Force -Path "$HOME\.git-scripts"
+Copy-Item "scripts\git-commit-script.sh" -Destination "$HOME\.git-scripts\git-commit.sh"
+Copy-Item "scripts\git-finish-script.sh" -Destination "$HOME\.git-scripts\git-finish.sh"
+# chmod is not required on Windows
 ```
 
-### 4. Add aliases to your `.gitconfig`
+### 3. Configure your Git aliases
+Open your `~/.gitconfig` (usually at `%USERPROFILE%\.gitconfig` on Windows) and append the contents of `gitconfig-aliases.ini`.
 
-Open `~/.gitconfig` and add the content from `gitconfig-aliases.ini`, or run:
-
-```bash
-cat git-ai-flow/gitconfig-aliases.ini >> ~/.gitconfig
-```
-
-Then open `~/.gitconfig` and replace the placeholder identity with your own:
-
-```ini
-[user]
-    name  = Your Name        # ← replace with your full name
-    email = you@example.com  # ← replace with your Git email
-```
-
-> **Note:** If you already have a `[user]` block in your `~/.gitconfig`, remove the one added by the command above to avoid duplicates.
->
-> On Windows `~` resolves to `C:\Users\YourName\`.
-
----
-
-## Branch naming convention
-
-Scripts extract the GitHub issue number from the branch name. The expected format is:
-
-```
-<type>/<issue_number>_<description>
-```
-
-**Examples:**
-```
-feature/123_dark_mode
-bugfix/456_crash_login
-hotfix/789_payment_fix
-release/2.1.0
-```
-
-| Type | Base branch | Merge target(s) |
-|---|---|---|
-| `feature` | `develop` | `develop` |
-| `bugfix` | `develop` | `develop` |
-| `release` | `develop` | `main` + `develop` |
-| `hotfix` | `main` | `main` + `develop` |
-| `support` | `main` | `main` |
-
----
+> ⚠️ **Warning:** The `gitconfig-aliases.ini` file starts with a `[user]` block. Before appending, check if you already have one:
+> ```bash
+> # In Bash/Git Bash:
+> grep "\[user\]" ~/.gitconfig
+> ```
+> If you do, skip the first few lines of the `.ini` file and only append the `[alias]` section.
 
 ## Usage
 
-### Initialize GitFlow on a new repo
-
-If your repository only has `main` (freshly created on GitHub), run this once before anything else:
-
+### 1. Initialize Flow
+If your project only has a `main` branch:
 ```bash
 git init-flow
-# ✅ Branch develop creato e pushato su origin
 ```
 
-All subsequent commands will work normally. The only exception is `git start hotfix` and `git start support`, which can run without `develop` — but `git finish` on a hotfix still needs it, so running `init-flow` first is always the safest choice.
-
-### Start a branch
-
+### 2. Start a Task
 ```bash
 git start feature 123_dark_mode
-git start bugfix 456_crash_login
-git start hotfix 789_payment_fix
-git start release 2.1.0
+# Creates branch feature/123_dark_mode from develop
 ```
 
-### Commit while working
-
+### 3. Commit with AI
 ```bash
-git add lib/ui/dark_mode.dart
+git add .
 git c
-
-# 🤖 Generating message with Gemini...
-#
-# 💬 Suggested message:
-#    feat(ui): add dark mode screen (ref #123)
-#
-#    - Add DarkModeScreen widget in dark_mode.dart
-#    - Introduce ThemeProvider with system theme detection
-#    - Update AppColors with dark palette variants
-#
-#    Accept? [Y/n/e(dit)] →
+# Gemini generates a message, you confirm/edit, commit is made
 ```
 
-### Finish and merge
-
+### 4. Finish and Merge
 ```bash
 git finish
-
-# 🔍 Branch: feature/123_dark_mode → merge into: develop
-# 🤖 Generating message with Gemini...
-#
-# 💬 Suggested message:
-#    feat: dark mode with system theme support
-#    Close #123
-#
-#    Accept? [Y/n/e(dit)] →
+# Generates merge message, merges to develop (and main if needed), deletes branch
 ```
 
-### Other aliases
+### 5. Release & Hotfix Workflow
+For standard releases and urgent fixes:
 
-```bash
-git publish        # push current branch to origin
-git st-flow        # list active flow branches
-git sync           # checkout develop + pull
-```
+1. **Prepare the Changelog:**
+   Update `CHANGELOG.md` with the new version header (e.g., `## [1.0.0]`). Do not add a date yet.
 
----
+2. **Start a release/hotfix:**
+   ```bash
+   # Automatically detects version from CHANGELOG.md
+   git start release
+   
+   # Or specify manually
+   git start hotfix v1.0.1
+   ```
 
-## `develop` branch requirement
+3. **Work and commit:**
+   ```bash
+   git add .
+   git c
+   ```
 
-GitFlow requires `develop` to exist for almost every operation. The only exception is `support`, which interacts exclusively with `main`.
-
-| Type | Needs `develop` for `start` | Needs `develop` for `finish` |
-|---|---|---|
-| `feature` | ✅ | ✅ |
-| `bugfix` | ✅ | ✅ |
-| `release` | ✅ | ✅ |
-| `hotfix` | ❌ (starts from `main`) | ✅ (merges back) |
-| `support` | ❌ | ❌ |
-
-Both `git start` and `git finish` will show a clear error if `develop` is missing, with instructions to run `git init-flow`.
-
----
-
-## Prompt interaction
-
-Both `git c` and `git finish` show a confirmation prompt before acting:
-
-| Input | Action |
-|---|---|
-| `Y` or Enter | Accept AI message |
-| `n` | Cancel operation |
-| `e` | Manually type a custom message |
-
-When editing manually, the `ref #N` / `Close #N` issue reference is still appended automatically.
-
----
+4. **Finish the branch:**
+   ```bash
+   git finish
+   ```
+   **What happens automatically:**
+   - **Changelog Update:** If a matching version is found in `CHANGELOG.md` without a date, it automatically appends the current date (e.g., `## [1.0.0] - 2026-04-11`).
+   - **Merge targets:** Merges into **both** `main` and `develop`.
+   - **AI Summary:** Generates a detailed merge message from all branch commits.
+   - **Tagging:** Automatically creates a Git tag with the version name (e.g., `v1.0.0`).
+   - **Cleanup:** Deletes the local release/hotfix branch.
 
 ## Troubleshooting
-
-**Gemini returns empty output**
-```bash
-gemini  # re-authenticate
-```
-
-**`git start` fails on pull**
-Make sure `origin` is set and you have network access:
-```bash
-git remote -v
-```
-
-**Issue number not detected**
-Ensure your branch name starts with digits: `123_feature_name`, not `feature_name_123`.
+- **Gemini not found:** Ensure `gemini` is in your PATH and you have run `gemini login`.
+- **Permission denied (macOS/Linux):** Ensure you ran `chmod +x` on the scripts in `~/.git-scripts/`.
+- **Bash not found (Windows):** Ensure Git Bash is installed (it comes with Git for Windows). The scripts are executed using the `bash` command defined in the aliases.
+- **Alias conflict:** Check `~/.gitconfig` for existing aliases that might conflict with `c`, `finish`, or `start`.

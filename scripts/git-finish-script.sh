@@ -1,20 +1,28 @@
 #!/bin/bash
 # ~/.git-scripts/git-finish.sh
-# Genera un messaggio di merge con Gemini CLI
+# Generate a merge commit message with Gemini CLI
 
-CURRENT=$(git symbolic-ref --short HEAD 2>/dev/null)
+set -euo pipefail
+
+# ─── Verification of clean working directory ─────────────────────
+if ! git diff-index --quiet HEAD --; then
+  printf "❌ Clean your working directory before merging. Commit or stash changes.\n"
+  exit 1
+fi
+
+CURRENT=$(git symbolic-ref --short HEAD 2>/dev/null || echo "")
 if [ -z "$CURRENT" ]; then
-  echo "❌ Non sei in un branch git valido."
+  printf "❌ Not in a valid git branch.\n"
   exit 1
 fi
 
 TYPE=$(echo "$CURRENT" | cut -d/ -f1)
 NAME=$(echo "$CURRENT" | cut -d/ -f2)
 
-# Estrae il numero della issue (es. feature/123_dark_mode → 123)
-ISSUE_NUM=$(echo "$NAME" | grep -oE '^[0-9]+')
+# Extract issue number (e.g. feature/123_dark_mode → 123)
+ISSUE_NUM=$(echo "$NAME" | grep -oE '^[0-9]+' || echo "")
 
-# Determina base e target del merge
+# Determine merge base and targets
 case "$TYPE" in
   hotfix)  BASE=main;    TARGETS="main develop" ;;
   release) BASE=develop; TARGETS="main develop" ;;
@@ -22,26 +30,26 @@ case "$TYPE" in
   *)       BASE=develop; TARGETS="develop" ;;
 esac
 
-# Verifica che develop esista (serve per tutti i tipi tranne support)
+# Check that develop exists (required for all types except support)
 if [ "$TYPE" != "support" ] && ! git show-ref --verify --quiet refs/heads/develop; then
-  echo "❌ Branch 'develop' non esiste. Esegui prima: git init-flow"
+  printf "❌ 'develop' branch does not exist. Run first: git init-flow\n"
   exit 1
 fi
 
-echo "🔍 Branch: $CURRENT → merge in: $TARGETS"
-echo ""
+printf "🔍 Branch: %s → merge into: %s\n" "$CURRENT" "$TARGETS"
+printf "\n"
 
-# ─── Diff del branch ──────────────────────────────────────────
-COMMITS=$(git log "$BASE".."$CURRENT" --oneline 2>/dev/null)
-DIFF=$(git diff "$BASE"..."$CURRENT" --stat 2>/dev/null)
+# ─── Branch Diff ──────────────────────────────────────────────────
+COMMITS=$(git log "$BASE".."$CURRENT" --oneline 2>/dev/null || echo "")
+DIFF=$(git diff "$BASE"..."$CURRENT" --stat 2>/dev/null || echo "")
 
 if [ -z "$COMMITS" ]; then
-  echo "⚠️  Nessun commit trovato rispetto a $BASE. Hai committato le modifiche?"
+  printf "⚠️  No commits found compared to %s. Have you committed your changes?\n" "$BASE"
   exit 1
 fi
 
-# ─── Genera messaggio con Gemini CLI ──────────────────────────
-echo "🤖 Genero il messaggio con Gemini..."
+# ─── Generate message with Gemini CLI ─────────────────────────────
+printf "🤖 Generating message with Gemini...\n"
 
 PROMPT="You are a Git expert. Generate a concise merge commit message following Conventional Commits (feat, fix, chore, refactor, docs, test, style).
 
@@ -57,47 +65,53 @@ $DIFF
 Rules:
 - Reply with ONLY the commit message, nothing else
 - Format: type: short description (max 72 chars)
-- Use Italian if the branch name is in Italian, English otherwise
+- Language: English
 - For release/hotfix include the version or fix name
 - Do NOT include any 'Close #' reference, that will be appended separately"
 
-# Aggiunge il riferimento alla issue se presente
+# Handle issue reference if present
 if [ -n "$ISSUE_NUM" ]; then
   CLOSE_REF="Close #$ISSUE_NUM"
 else
   CLOSE_REF=""
 fi
 
-AI_MSG=$(gemini -p "$PROMPT" 2>/dev/null | tr -d '\n' | sed 's/^[[:space:]]*//')
+AI_MSG_RAW=$(gemini -p "$PROMPT" 2>&1 || true)
 
-# Compone il messaggio finale con il riferimento alla issue
+if echo "$AI_MSG_RAW" | grep -iq "error"; then
+  printf "❌ Gemini error: %s\n" "$AI_MSG_RAW"
+  exit 1
+fi
+
+AI_MSG=$(echo "$AI_MSG_RAW" | tr -d '\r' | sed 's/^[[:space:]]*//')
+
+if [ -z "$AI_MSG" ]; then
+  printf "❌ Gemini returned an empty response. Verify your login with: gemini\n"
+  exit 1
+fi
+
+# Compose final message with issue reference
 if [ -n "$CLOSE_REF" ]; then
   FULL_MSG=$(printf "%s\n\n%s" "$AI_MSG" "$CLOSE_REF")
 else
   FULL_MSG="$AI_MSG"
 fi
 
-if [ -z "$AI_MSG" ]; then
-  echo "❌ Gemini non ha risposto. Verifica di essere loggato con: gemini"
-  exit 1
-fi
-
-# ─── Conferma utente ──────────────────────────────────────────
-echo ""
-echo "💬 Messaggio suggerito:"
-echo "   $AI_MSG"
-[ -n "$CLOSE_REF" ] && echo "   $CLOSE_REF"
-echo ""
-printf "   Accetti? [Y/n/e(dit)] → "
+# ─── User Confirmation ──────────────────────────────────────────
+printf "\n💬 Suggested message:\n"
+printf "   %s\n" "$AI_MSG"
+[ -n "$CLOSE_REF" ] && printf "   %s\n" "$CLOSE_REF"
+printf "\n   Accept? [Y/n/e(dit)] (default: y) → "
 read -r CHOICE
+CHOICE=${CHOICE:-y}
 
 case "$CHOICE" in
   n|N)
-    echo "❌ Operazione annullata."
+    printf "❌ Operation cancelled.\n"
     exit 0
     ;;
   e|E)
-    printf "   Inserisci il messaggio (senza Close #): "
+    printf "   Enter the message (without Close #): "
     read -r AI_MSG
     if [ -n "$CLOSE_REF" ]; then
       FULL_MSG=$(printf "%s\n\n%s" "$AI_MSG" "$CLOSE_REF")
@@ -108,24 +122,66 @@ case "$CHOICE" in
 esac
 
 if [ -z "$FULL_MSG" ]; then
-  echo "❌ Messaggio vuoto. Operazione annullata."
+  printf "❌ Empty message. Operation cancelled.\n"
   exit 1
 fi
 
-# ─── Esegui il merge ──────────────────────────────────────────
-echo ""
-for TARGET in $TARGETS; do
-  git checkout "$TARGET" && \
-  git merge --no-ff "$CURRENT" -m "$FULL_MSG" && \
-  echo "✅ Mergiato in $TARGET"
-done
-
-# Tag automatico per release e hotfix
+# ─── Update CHANGELOG.md (for release/hotfix) ────────────────────
 if [ "$TYPE" = "release" ] || [ "$TYPE" = "hotfix" ]; then
-  git tag -a "$NAME" -m "$FULL_MSG"
-  echo "🏷️  Tag '$NAME' creato"
+  if [ -f "CHANGELOG.md" ]; then
+    DATE=$(date +%Y-%m-%d)
+    CLEAN_NAME=$(echo "$NAME" | sed 's/^v//')
+    TARGET_VER=""
+    if grep -q "## \[$NAME\]" CHANGELOG.md; then
+      TARGET_VER="$NAME"
+    elif grep -q "## \[$CLEAN_NAME\]" CHANGELOG.md; then
+      TARGET_VER="$CLEAN_NAME"
+    fi
+
+    if [ -n "$TARGET_VER" ]; then
+      # Escape periods for sed
+      ESC_VER=$(echo "$TARGET_VER" | sed 's/\./\\./g')
+      # Check if it already has a date
+      if ! grep "## \[$TARGET_VER\]" CHANGELOG.md | grep -qE '[0-9]{4}-[0-9]{2}-[0-9]{2}'; then
+        sed "s/## \[$ESC_VER\].*/## \[$TARGET_VER\] - $DATE/" CHANGELOG.md > CHANGELOG.md.tmp && mv CHANGELOG.md.tmp CHANGELOG.md
+        printf "📝 Updated CHANGELOG.md with date %s\n" "$DATE"
+        git add CHANGELOG.md
+        git commit -m "chore: update changelog for $TARGET_VER" --quiet
+      fi
+    fi
+  fi
 fi
 
-git branch -d "$CURRENT"
-echo ""
-echo "🎉 Done! → \"$FULL_MSG\""
+# ─── Execute Merge ───────────────────────────────────────────────
+printf "\n"
+for TARGET in $TARGETS; do
+  if ! git checkout "$TARGET"; then
+    printf "❌ Could not checkout %s\n" "$TARGET"
+    exit 1
+  fi
+  
+  if ! git merge --no-ff "$CURRENT" -m "$FULL_MSG"; then
+    printf "❌ Merge conflict detected in %s. Resolve manually and then run 'git finish' again.\n" "$TARGET"
+    exit 1
+  fi
+  printf "✅ Merged into %s\n" "$TARGET"
+done
+
+# Automatic tag for release and hotfix
+if [ "$TYPE" = "release" ] || [ "$TYPE" = "hotfix" ]; then
+  if ! git tag -a "$NAME" -m "$FULL_MSG"; then
+    printf "❌ Tag '%s' already exists or could not be created.\n" "$NAME"
+    exit 1
+  else
+    printf "🏷️  Tag '%s' created\n" "$NAME"
+  fi
+fi
+
+# Delete branch
+if ! git branch -d "$CURRENT"; then
+  printf "⚠️  Could not delete branch '%s' (possibly not fully merged elsewhere?)\n" "$CURRENT"
+else
+  printf "🗑️  Branch '%s' deleted\n" "$CURRENT"
+fi
+
+printf "\n🎉 Done! → \"%s\"\n" "$(echo "$FULL_MSG" | head -n 1)"

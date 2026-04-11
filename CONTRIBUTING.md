@@ -1,96 +1,59 @@
 # Contributing to git-ai-flow
 
-Thank you for considering a contribution! This project uses its own workflow, so please follow the guidelines below.
+Thank you for your interest in improving `git-ai-flow`! To maintain consistency and quality, please follow these guidelines.
 
----
+## Development Environment Setup
 
-## Getting started
+1. **Prerequisites:**
+   - Git 2.20+
+   - Bash 4.0+ (macOS users: `brew install bash`)
+   - Gemini CLI (properly logged in)
+   - ShellCheck (`brew install shellcheck` or `sudo apt install shellcheck`)
 
-1. **Fork** this repository
-2. **Clone** your fork locally
-3. Follow the [installation steps](README.md#installation) so you can test your changes with the actual scripts
+2. **Local Testing:**
+   - Make your changes to the scripts in the `scripts/` directory.
+   - To test them locally, copy them to your `~/.git-scripts/` directory:
+     ```bash
+     cp scripts/git-commit-script.sh ~/.git-scripts/git-commit.sh
+     cp scripts/git-finish-script.sh ~/.git-scripts/git-finish.sh
+     ```
+   - Use a separate test repository to verify the behavior.
 
----
+## Linting and Code Style
 
-## Branching convention
-
-Use the same naming convention this project documents:
-
-```
-feature/<issue_number>_<short_description>
-bugfix/<issue_number>_<short_description>
-```
-
-Always branch from `develop`:
-
+Before submitting a PR, ensure your shell scripts pass ShellCheck:
 ```bash
-git checkout develop
-git pull origin develop
-git checkout -b feature/42_improve_prompt
+shellcheck scripts/*.sh
 ```
 
----
+**Code Style Rules:**
+- Use 2-space indentation.
+- Always quote variables (e.g., `"$VARIABLE"`) to prevent word splitting.
+- Use `set -euo pipefail` for robustness.
+- Prefer `printf` over `echo` for messages.
+- Comments should explain *why*, not just *what*.
 
-## Commit messages
+## Manual Testing Checklist
 
-Please use [Conventional Commits](https://www.conventionalcommits.org/):
+Before opening a PR, please verify:
+- [ ] `git start feature 123_test` creates the branch from `develop`.
+- [ ] `git start hotfix 1.2.1_fix` creates the branch from `main`.
+- [ ] `git c` correctly generates a Conventional Commit message.
+- [ ] `git finish` on a feature branch merges into `develop` and deletes the branch.
+- [ ] `git finish` on a release/hotfix branch merges into BOTH `main` and `develop`.
+- [ ] Error handling: try running `git c` without staged files.
 
-```
-feat(commit): improve Gemini prompt for scoped messages
-fix(finish): correct merge target for support branches
-docs(readme): add troubleshooting section
-chore: update gitconfig alias formatting
-```
+## Branching & PRs
 
-Types: `feat`, `fix`, `chore`, `refactor`, `docs`, `test`, `style`, `perf`
+1. Fork the repo and create your branch from `develop`.
+2. Name your branch: `feature/description` or `bugfix/description`.
+3. Keep PRs focused on a single change.
+4. If you modify the Gemini prompt, please provide at least 3 examples of the current output vs. the desired output in the PR description.
 
-> Of course, feel free to use `git c` from this very project to generate your commit messages.
+## AI Prompt Guidelines
 
----
-
-## Pull requests
-
-- Target branch: **`develop`** (never `main` directly)
-- Keep PRs focused — one feature or fix per PR
-- Update `docs/DOCUMENTATION.md` if you change script behavior
-- Update `README.md` if you add or remove a command
-
-### PR title format
-
-Follow Conventional Commits for the PR title as well:
-
-```
-feat(finish): add GPT fallback when Gemini is unavailable
-fix(commit): handle empty diff edge case
-```
-
----
-
-## Suggesting changes to prompts
-
-The Gemini prompts inside the scripts are the core of this project. If you have an improvement:
-
-1. Open an issue describing the current output vs. the expected output with a real example
-2. Propose the new prompt wording in the issue before opening a PR
-
-This avoids back-and-forth on subjective prompt phrasing.
-
----
-
-## Reporting bugs
-
-Open an issue with:
-
-- Your OS and Git Bash version
-- The command you ran
-- The full terminal output
-- Expected vs. actual behavior
-
----
-
-## Code style
-
-- Scripts are **bash** — keep them POSIX-compatible where possible
-- Prefer clarity over cleverness
-- Add a comment for any non-obvious logic
-- Emoji in `echo` output is encouraged 🙂
+When modifying prompts in `scripts/`:
+- Keep the instructions concise.
+- Ensure the output format is strictly defined (e.g., "Reply with ONLY...").
+- Do not hardcode specific issue numbers in the prompt; use variables.
+- Always prioritize English for the generated messages.

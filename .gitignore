@@ -1,0 +1,14 @@
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+test-repos/
+tmp/
+
+# AI Tools (Claude/Gemini)
+.claude/
+.gemini/
+*.md.plan
