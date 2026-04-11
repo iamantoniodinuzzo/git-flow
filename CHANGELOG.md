@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-04-11
+
+### Added
+- Repository settings configuration in `.github/settings.yml` (SEO description, topics).
+- Official contact email (`iamantoniodinuzzo@gmail.com`) across `README.md`, `SECURITY.md`, and `gitconfig-aliases.ini`.
+
+### Changed
+- Removed outdated CI badges and links from `README.md`.
+
 ## [0.2.1] - 2026-04-11
 
 ### Added
