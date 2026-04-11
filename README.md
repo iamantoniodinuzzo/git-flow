@@ -1,7 +1,6 @@
 # git-ai-flow 🤖
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![CI](https://github.com/tonydetony/git-ai-flow/actions/workflows/ci.yml/badge.svg)](https://github.com/tonydetony/git-ai-flow/actions)
 
 A lightweight GitFlow toolkit integrated with **Gemini CLI** for AI-assisted commit and merge messages.
 
@@ -123,3 +122,6 @@ For standard releases and urgent fixes:
 - **Permission denied (macOS/Linux):** Ensure you ran `chmod +x` on the scripts in `~/.git-scripts/`.
 - **Bash not found (Windows):** Ensure Git Bash is installed (it comes with Git for Windows). The scripts are executed using the `bash` command defined in the aliases.
 - **Alias conflict:** Check `~/.gitconfig` for existing aliases that might conflict with `c`, `finish`, or `start`.
+
+## Contact
+For questions, suggestions, or security reports (see [SECURITY.md](SECURITY.md)), please contact **Antonio Di Nuzzo** at iamantoniodinuzzo@gmail.com.

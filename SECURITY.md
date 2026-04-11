@@ -11,7 +11,7 @@ Only the latest release on the `main` branch is supported with security updates.
 
 ## Reporting a Vulnerability
 
-We take the security of `git-ai-flow` seriously. If you believe you have found a security vulnerability, please do NOT open a public issue. Instead, report it privately by emailing [INSERT EMAIL ADDRESS].
+We take the security of `git-ai-flow` seriously. If you believe you have found a security vulnerability, please do NOT open a public issue. Instead, report it privately by emailing iamantoniodinuzzo@gmail.com.
 
 We are particularly interested in reports related to:
 - Shell injection vulnerabilities in scripts
