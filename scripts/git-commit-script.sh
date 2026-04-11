@@ -14,9 +14,19 @@ fi
 # ─── Branch and issue info ───────────────────────────────────────
 CURRENT=$(git symbolic-ref --short HEAD 2>/dev/null || echo "detached")
 NAME=$(echo "$CURRENT" | cut -d/ -f2)
-ISSUE_NUM=$(echo "$NAME" | grep -oE '^[0-9]+' || echo "")
 
-[ -n "$ISSUE_NUM" ] && ISSUE_REF="(ref #$ISSUE_NUM)" || ISSUE_REF=""
+# Extract issue number (e.g. feature/123_dark_mode → 123)
+if [[ "$NAME" =~ ^([0-9]+)_ ]]; then
+  ISSUE_NUM="${BASH_REMATCH[1]}"
+else
+  ISSUE_NUM=""
+fi
+
+if [ -n "$ISSUE_NUM" ]; then
+  ISSUE_REF="(ref #$ISSUE_NUM)"
+else
+  ISSUE_REF=""
+fi
 
 # ─── Staged Diff Handling ────────────────────────────────────────
 # Limit diff size to avoid API limits (approx 150 lines)

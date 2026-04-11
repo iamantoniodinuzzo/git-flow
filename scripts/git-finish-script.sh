@@ -20,14 +20,18 @@ TYPE=$(echo "$CURRENT" | cut -d/ -f1)
 NAME=$(echo "$CURRENT" | cut -d/ -f2)
 
 # Extract issue number (e.g. feature/123_dark_mode → 123)
-ISSUE_NUM=$(echo "$NAME" | grep -oE '^[0-9]+' || echo "")
+if [[ "$NAME" =~ ^([0-9]+)_ ]]; then
+  ISSUE_NUM="${BASH_REMATCH[1]}"
+else
+  ISSUE_NUM=""
+fi
 
 # Determine merge base and targets
 case "$TYPE" in
-  hotfix)  BASE=main;    TARGETS="main develop" ;;
-  release) BASE=develop; TARGETS="main develop" ;;
-  support) BASE=main;    TARGETS="main" ;;
-  *)       BASE=develop; TARGETS="develop" ;;
+  hotfix)  BASE=main;    TARGETS=("main" "develop") ;;
+  release) BASE=develop; TARGETS=("main" "develop") ;;
+  support) BASE=main;    TARGETS=("main") ;;
+  *)       BASE=develop; TARGETS=("develop") ;;
 esac
 
 # Check that develop exists (required for all types except support)
@@ -36,7 +40,7 @@ if [ "$TYPE" != "support" ] && ! git show-ref --verify --quiet refs/heads/develo
   exit 1
 fi
 
-printf "🔍 Branch: %s → merge into: %s\n" "$CURRENT" "$TARGETS"
+printf "🔍 Branch: %s → merge into: %s\n" "$CURRENT" "${TARGETS[*]}"
 printf "\n"
 
 # ─── Branch Diff ──────────────────────────────────────────────────
@@ -154,7 +158,7 @@ fi
 
 # ─── Execute Merge ───────────────────────────────────────────────
 printf "\n"
-for TARGET in $TARGETS; do
+for TARGET in "${TARGETS[@]}"; do
   if ! git checkout "$TARGET"; then
     printf "❌ Could not checkout %s\n" "$TARGET"
     exit 1

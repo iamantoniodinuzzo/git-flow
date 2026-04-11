@@ -8,7 +8,7 @@
 
 ## Repository structure
 
-```
+```text
 git-ai-flow/
 ├── scripts/
 │   ├── git-commit-script.sh   # AI commit message generator (working commits)
@@ -59,9 +59,15 @@ Exits immediately if nothing is staged, preventing an empty commit.
 **2. Issue extraction**
 ```bash
 NAME=$(echo "$CURRENT" | cut -d/ -f2)
-ISSUE_NUM=$(echo "$NAME" | grep -oE '^[0-9]+' || echo "")
+
+# Extract issue number (e.g. feature/123_dark_mode → 123)
+if [[ "$NAME" =~ ^([0-9]+)_ ]]; then
+  ISSUE_NUM="${BASH_REMATCH[1]}"
+else
+  ISSUE_NUM=""
+fi
 ```
-Splits the branch name on `/`, takes the second part (e.g. `123_dark_mode`), then extracts the leading digits.
+Splits the branch name on `/`, takes the second part (e.g. `123_dark_mode`), then extracts the leading digits only if followed by an underscore.
 
 **3. Diff collection & truncation**
 The script limits the diff size to approximately 150 lines. If the diff is too large, it falls back to `git diff --stat` to avoid Gemini API token limits.
@@ -70,7 +76,7 @@ The script limits the diff size to approximately 150 lines. If the diff is too l
 
 The prompt instructs Gemini to produce a message in this format:
 
-```
+```text
 type(scope): short description (max 72 chars)
 
 - concrete change from the diff
@@ -87,14 +93,14 @@ Key prompt constraints:
 **5. Issue reference**
 
 If an issue number was found, it is appended inline on the first line:
-```
+```text
 feat(ui): add dark mode screen (ref #123)
 ```
 `ref #N` links the commit to the issue without closing it.
 
 **6. Confirmation prompt**
 
-```
+```text
 Accept? [Y/n/e(dit)] (default: y) →
 ```
 `Y`/Enter commits as-is. `e` lets the user retype the subject line.
@@ -134,7 +140,7 @@ Passes the branch's commit history and a summary of changed files to Gemini.
 **5. Issue reference**
 
 At merge time the issue is closed by appending `Close #N` in the commit body:
-```
+```text
 feat: dark mode with system theme support
 
 Close #123
