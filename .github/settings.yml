@@ -1,0 +1,14 @@
+repository:
+  description: "git-ai-flow: Streamline Git workflows with AI-powered Conventional Commits and automated GitFlow. Lightweight Bash toolkit integrated with Gemini CLI for smart, fast, and consistent development cycles."
+  homepage: https://github.com/iamantoniodinuzzo/git-ai-flow
+  topics:
+    - git
+    - gitflow
+    - ai
+    - conventional-commits
+    - automation
+    - gemini-cli
+    - bash-scripts
+    - workflow-automation
+    - productivity
+    - developer-tools
