@@ -1,6 +1,6 @@
 #!/bin/bash
 # ~/.git-scripts/git-finish.sh
-# Generate a merge commit message with Gemini CLI
+# Merge branch with auto-generated message and issue reference
 
 set -euo pipefail
 
@@ -52,46 +52,30 @@ if [ -z "$COMMITS" ]; then
   exit 1
 fi
 
-# ─── Generate message with Gemini CLI ─────────────────────────────
-printf "🤖 Generating message with Gemini...\n"
+# ─── Generate merge message ───────────────────────────────────────
+case "$TYPE" in
+  feature) MSG_TYPE="feat" ;;
+  bugfix)  MSG_TYPE="fix" ;;
+  release) MSG_TYPE="chore(release)" ;;
+  hotfix)  MSG_TYPE="fix(hotfix)" ;;
+  support) MSG_TYPE="chore(support)" ;;
+  *)       MSG_TYPE="chore" ;;
+esac
 
-PROMPT="You are a Git expert. Generate a concise merge commit message following Conventional Commits (feat, fix, chore, refactor, docs, test, style).
+SUBJECT="${MSG_TYPE}: merge ${CURRENT} into ${TARGETS[*]}"
+# Truncate subject to 72 chars
+if [ "${#SUBJECT}" -gt 72 ]; then
+  SUBJECT="${SUBJECT:0:69}..."
+fi
 
-Branch type: $TYPE
-Branch name: $NAME
-
-Commits:
-$COMMITS
-
-Changed files:
-$DIFF
-
-Rules:
-- Reply with ONLY the commit message, nothing else
-- Format: type: short description (max 72 chars)
-- Language: English
-- For release/hotfix include the version or fix name
-- Do NOT include any 'Close #' reference, that will be appended separately"
+BODY=$(echo "$COMMITS" | sed 's/^/- /')
+AI_MSG=$(printf "%s\n\n%s" "$SUBJECT" "$BODY")
 
 # Handle issue reference if present
 if [ -n "$ISSUE_NUM" ]; then
   CLOSE_REF="Close #$ISSUE_NUM"
 else
   CLOSE_REF=""
-fi
-
-AI_MSG_RAW=$(gemini -p "$PROMPT" 2>&1 || true)
-
-if echo "$AI_MSG_RAW" | grep -iq "error"; then
-  printf "❌ Gemini error: %s\n" "$AI_MSG_RAW"
-  exit 1
-fi
-
-AI_MSG=$(echo "$AI_MSG_RAW" | tr -d '\r' | sed 's/^[[:space:]]*//')
-
-if [ -z "$AI_MSG" ]; then
-  printf "❌ Gemini returned an empty response. Verify your login with: gemini\n"
-  exit 1
 fi
 
 # Compose final message with issue reference
@@ -102,9 +86,9 @@ else
 fi
 
 # ─── User Confirmation ──────────────────────────────────────────
-printf "\n💬 Suggested message:\n"
-printf "   %s\n" "$AI_MSG"
-[ -n "$CLOSE_REF" ] && printf "   %s\n" "$CLOSE_REF"
+printf "\n💬 Merge message:\n"
+printf "%s\n" "$AI_MSG"
+[ -n "$CLOSE_REF" ] && printf "%s\n" "$CLOSE_REF"
 printf "\n   Accept? [Y/n/e(dit)] (default: y) → "
 read -r CHOICE
 CHOICE=${CHOICE:-y}
@@ -163,7 +147,7 @@ for TARGET in "${TARGETS[@]}"; do
     printf "❌ Could not checkout %s\n" "$TARGET"
     exit 1
   fi
-  
+
   if ! git merge --no-ff "$CURRENT" -m "$FULL_MSG"; then
     printf "❌ Merge conflict detected in %s. Resolve manually and then run 'git finish' again.\n" "$TARGET"
     exit 1

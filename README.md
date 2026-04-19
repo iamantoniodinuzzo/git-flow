@@ -1,8 +1,8 @@
-# git-ai-flow 🤖
+# git-ai-flow
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-A lightweight GitFlow toolkit integrated with **Gemini CLI** for AI-assisted commit and merge messages.
+A lightweight GitFlow toolkit with Conventional Commits automation and interactive commit workflows.
 
 ## Table of Contents
 - [Features](#features)
@@ -12,27 +12,26 @@ A lightweight GitFlow toolkit integrated with **Gemini CLI** for AI-assisted com
 - [Troubleshooting](#troubleshooting)
 
 ## Features
-- **Smart Commits:** Generates Conventional Commits messages based on your staged diff.
-- **Automated Merges:** Creates detailed merge summaries with issue references (e.g., `Close #123`).
+- **Smart Commits:** Opens your editor with a Conventional Commits template pre-filled with branch context and staged file summary.
+- **Automated Merges:** Auto-generates merge messages from branch metadata and commit history, with issue references (e.g., `Close #123`).
 - **Clean GitFlow:** Ready-to-use aliases for starting and finishing features, bugfixes, releases, and hotfixes.
 - **Issue Integration:** Automatically extracts issue numbers from branch names.
 
 ## Requirements
 - **Git** (tested on 2.40+)
 - **Bash** (v4.0+)
-- **[Gemini CLI](https://github.com/google/gemini-cli)** (logged in and working)
 
 ## Installation
 
 ### 1. Clone the repository
 ```bash
-git clone https://github.com/tonydetony/git-ai-flow.git
+git clone https://github.com/iamantoniodinuzzo/git-ai-flow.git
 cd git-ai-flow
 ```
 
 ### 2. Prepare the scripts directory
 
-#### 🍎 macOS / 🐧 Linux
+#### macOS / Linux
 ```bash
 mkdir -p ~/.git-scripts
 cp scripts/git-commit-script.sh ~/.git-scripts/git-commit.sh
@@ -40,7 +39,7 @@ cp scripts/git-finish-script.sh ~/.git-scripts/git-finish.sh
 chmod +x ~/.git-scripts/*.sh
 ```
 
-#### 🪟 Windows (PowerShell)
+#### Windows (PowerShell)
 ```powershell
 New-Item -ItemType Directory -Force -Path "$HOME\.git-scripts"
 Copy-Item "scripts\git-commit-script.sh" -Destination "$HOME\.git-scripts\git-commit.sh"
@@ -51,7 +50,7 @@ Copy-Item "scripts\git-finish-script.sh" -Destination "$HOME\.git-scripts\git-fi
 ### 3. Configure your Git aliases
 Open your `~/.gitconfig` (usually at `%USERPROFILE%\.gitconfig` on Windows) and append the contents of `gitconfig-aliases.ini`.
 
-> ⚠️ **Warning:** The `gitconfig-aliases.ini` file starts with a `[user]` block. Before appending, check if you already have one:
+> **Warning:** The `gitconfig-aliases.ini` file starts with a `[user]` block. Before appending, check if you already have one:
 > ```bash
 > # In Bash/Git Bash:
 > grep "\[user\]" ~/.gitconfig
@@ -72,17 +71,18 @@ git start feature 123_dark_mode
 # Creates branch feature/123_dark_mode from develop
 ```
 
-### 3. Commit with AI
+### 3. Commit
 ```bash
 git add .
 git c
-# Gemini generates a message, you confirm/edit, commit is made
+# Opens your editor with a Conventional Commits template
+# Write your message, save and close — commit is made
 ```
 
 ### 4. Finish and Merge
 ```bash
 git finish
-# Generates merge message, merges to develop (and main if needed), deletes branch
+# Auto-generates merge message, merges to develop (and main if needed), deletes branch
 ```
 
 ### 5. Release & Hotfix Workflow
@@ -93,11 +93,10 @@ For standard releases and urgent fixes:
 
 2. **Start a release/hotfix:**
    ```bash
-   # Automatically detects version from CHANGELOG.md
-   git start release
-   
-   # Or specify manually
-   git start hotfix v1.0.1
+   git start release 1.0.0
+
+   # Or for an urgent fix:
+   git start hotfix 1.0.1
    ```
 
 3. **Work and commit:**
@@ -113,12 +112,12 @@ For standard releases and urgent fixes:
    **What happens automatically:**
    - **Changelog Update:** If a matching version is found in `CHANGELOG.md` without a date, it automatically appends the current date (e.g., `## [1.0.0] - 2026-04-11`).
    - **Merge targets:** Merges into **both** `main` and `develop`.
-   - **AI Summary:** Generates a detailed merge message from all branch commits.
+   - **Merge summary:** Auto-generated from branch commits and metadata.
    - **Tagging:** Automatically creates a Git tag with the version name (e.g., `v1.0.0`).
    - **Cleanup:** Deletes the local release/hotfix branch.
 
 ## Troubleshooting
-- **Gemini not found:** Ensure `gemini` is in your PATH and you have run `gemini login`.
+- **Editor does not open:** Ensure `core.editor` is set in your `~/.gitconfig` (e.g., `git config --global core.editor "nano"`). VS Code users should use `code --wait`.
 - **Permission denied (macOS/Linux):** Ensure you ran `chmod +x` on the scripts in `~/.git-scripts/`.
 - **Bash not found (Windows):** Ensure Git Bash is installed (it comes with Git for Windows). The scripts are executed using the `bash` command defined in the aliases.
 - **Alias conflict:** Check `~/.gitconfig` for existing aliases that might conflict with `c`, `finish`, or `start`.
