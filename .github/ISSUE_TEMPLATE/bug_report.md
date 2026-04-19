@@ -27,7 +27,7 @@ If applicable, add screenshots or copy-paste terminal output to help explain you
  - OS: [e.g. Windows Git Bash, macOS, Linux]
  - Git version: [e.g. 2.40.0]
  - Bash version: [e.g. 5.2.15]
- - Gemini CLI version: [e.g. 0.12.0]
+ - Editor: [e.g. vim, nano, VS Code]
 
 **Additional context**
 Add any other context about the problem here.

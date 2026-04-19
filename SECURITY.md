@@ -15,7 +15,6 @@ We take the security of `git-ai-flow` seriously. If you believe you have found a
 
 We are particularly interested in reports related to:
 - Shell injection vulnerabilities in scripts
-- Prompt injection risks in Gemini CLI interactions
 - Unintentional leakage of credentials or sensitive environment data
 
 Please include a detailed description of the vulnerability and steps to reproduce it. We will acknowledge your report within 48 hours and provide a timeline for a fix if necessary.

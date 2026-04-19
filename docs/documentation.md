@@ -2,7 +2,7 @@
 
 ## Overview
 
-`git-ai-flow` is a set of Git aliases and Bash scripts that wrap common Git Flow operations and enhance them with AI-generated commit messages via **Gemini CLI**. The goal is to reduce friction in the commit and merge workflow while enforcing consistent message formatting through [Conventional Commits](https://www.conventionalcommits.org/).
+`git-ai-flow` is a set of Git aliases and Bash scripts that wrap common GitFlow operations and provide Conventional Commits automation with interactive commit workflows. The goal is to reduce friction in the commit and merge workflow while enforcing consistent message formatting through [Conventional Commits](https://www.conventionalcommits.org/).
 
 ---
 
@@ -11,8 +11,8 @@
 ```text
 git-ai-flow/
 ├── scripts/
-│   ├── git-commit-script.sh   # AI commit message generator (working commits)
-│   └── git-finish-script.sh   # AI merge message generator (branch close)
+│   ├── git-commit-script.sh   # Interactive commit with CC template
+│   └── git-finish-script.sh   # Auto-generated merge message + branch close
 ├── gitconfig-aliases.ini      # Ready-to-paste Git alias block
 ├── docs/
 │   └── documentation.md       # This file
@@ -26,20 +26,11 @@ git-ai-flow/
 
 ## How it works
 
-### The AI layer — Gemini CLI
+### Commit message generation
 
-Both scripts delegate message generation to **Gemini CLI** using the `-p` flag (non-interactive prompt mode). The integration is hardened to capture errors and handle large diffs.
+`git c` opens the user's configured editor with a pre-populated template. The template contains Conventional Commits guidance and branch context as `#` comment lines (stripped automatically before committing), followed by a blank area where the user writes the actual message.
 
-```bash
-# Example from git-commit-script.sh
-AI_MSG_RAW=$(gemini -p "$PROMPT" 2>&1 || true)
-```
-
-- `gemini -p "$PROMPT" 2>&1` — captures both output and potential errors.
-- `tr -d '\r'` — cleans up Windows-style line endings.
-- `sed 's/^[[:space:]]*//'` — strips leading whitespace.
-
-The prompt is built dynamically from the Git context (branch name, diff, commit log) before each call.
+`git finish` auto-generates a merge message from branch metadata (type, name) and the commit history between the base branch and the current branch — no external tool required.
 
 ---
 
@@ -63,32 +54,25 @@ NAME=$(echo "$CURRENT" | cut -d/ -f2)
 # Extract issue number (e.g. feature/123_dark_mode → 123)
 if [[ "$NAME" =~ ^([0-9]+)_ ]]; then
   ISSUE_NUM="${BASH_REMATCH[1]}"
-else
-  ISSUE_NUM=""
 fi
 ```
 Splits the branch name on `/`, takes the second part (e.g. `123_dark_mode`), then extracts the leading digits only if followed by an underscore.
 
-**3. Diff collection & truncation**
-The script limits the diff size to approximately 150 lines. If the diff is too large, it falls back to `git diff --stat` to avoid Gemini API token limits.
-
-**4. Prompt structure**
-
-The prompt instructs Gemini to produce a message in this format:
-
-```text
-type(scope): short description (max 72 chars)
-
-- concrete change from the diff
-- concrete change from the diff
-- concrete change from the diff
+**3. Editor detection**
+```bash
+COMMIT_EDITOR=$(git var GIT_EDITOR 2>/dev/null || echo "vi")
 ```
+Respects the user's configured editor via `GIT_EDITOR` env var, `core.editor` git config, `VISUAL`, `EDITOR`, then falls back to `vi`.
 
-Key prompt constraints:
-- **Always English**
-- `scope` only when clearly applicable
-- 2–6 bullet points, each referencing real diff content
-- No issue reference in the AI output (appended by the script)
+**4. Template creation**
+
+A temp file is written containing `#` comment lines with:
+- Conventional Commits type guide
+- Current branch name
+- Issue reference hint (if applicable)
+- `git diff --cached --stat` output
+
+The user writes their commit message above or below the comments; all `#` lines are stripped before committing.
 
 **5. Issue reference**
 
@@ -103,7 +87,7 @@ feat(ui): add dark mode screen (ref #123)
 ```text
 Accept? [Y/n/e(dit)] (default: y) →
 ```
-`Y`/Enter commits as-is. `e` lets the user retype the subject line.
+`Y`/Enter commits as-is. `e` re-opens the editor. `n` cancels.
 
 ---
 
@@ -134,14 +118,31 @@ Identifies the branch type (`feature`, `bugfix`, `release`, `hotfix`, `support`)
 | `hotfix` | `main` | `main develop` |
 | `support` | `main` | `main` |
 
-**4. Context collection**
-Passes the branch's commit history and a summary of changed files to Gemini.
+**4. Message generation**
+
+The merge message is auto-generated from branch metadata and commit history:
+
+```bash
+case "$TYPE" in
+  feature) MSG_TYPE="feat" ;;
+  bugfix)  MSG_TYPE="fix" ;;
+  release) MSG_TYPE="chore(release)" ;;
+  hotfix)  MSG_TYPE="fix(hotfix)" ;;
+  support) MSG_TYPE="chore(support)" ;;
+esac
+
+SUBJECT="${MSG_TYPE}: merge ${CURRENT} into ${TARGETS[*]}"
+BODY=$(echo "$COMMITS" | sed 's/^/- /')
+```
 
 **5. Issue reference**
 
 At merge time the issue is closed by appending `Close #N` in the commit body:
 ```text
-feat: dark mode with system theme support
+feat: merge feature/123_dark_mode into develop
+
+- abc1234 feat(ui): add dark mode toggle
+- def5678 fix(ui): handle system theme preference
 
 Close #123
 ```
@@ -161,9 +162,10 @@ Deletes the local branch after successful merges.
 
 | Alias | Script / Command | Description |
 |---|---|---|
+| `git init-flow` | inline shell function | Creates `develop` branch from `main` and pushes to origin |
 | `git start <type> <name>` | inline shell function | Creates branch from correct base after pulling latest |
-| `git c` | `git-commit-script.sh` | AI commit on staged files |
-| `git finish` | `git-finish-script.sh` | AI merge + close issue + optional tag |
+| `git c` | `git-commit-script.sh` | Interactive CC commit with editor template |
+| `git finish` | `git-finish-script.sh` | Auto-generated merge message + close issue + optional tag |
 | `git publish` | inline | Push current branch to origin |
 | `git st-flow` | inline grep | List all active flow branches |
 | `git sync` | inline | Checkout develop + pull |
@@ -172,8 +174,11 @@ Deletes the local branch after successful merges.
 
 ## Design decisions
 
-**Why Gemini CLI instead of a direct API call?**  
-Gemini CLI handles authentication seamlessly and requires no local API key management.
+**Why an editor template instead of inline prompts?**  
+The editor gives users full control over multi-line messages with Conventional Commits guidance visible as comments. It respects Git's configured editor (`core.editor`) and feels native to Git workflows. Users who prefer VS Code, Neovim, or any other editor get the same experience.
+
+**Why auto-generate merge messages from metadata?**  
+Merge messages are more formulaic than commit messages — the branch type, name, and commit list contain all the information needed. A deterministic, metadata-driven approach eliminates the external dependency while preserving the most important information.
 
 **Why `set -euo pipefail`?**  
 Ensures the scripts exit immediately on any error, preventing partial or corrupt Git operations.
