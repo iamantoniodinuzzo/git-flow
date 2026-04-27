@@ -21,8 +21,11 @@ cp scripts/git-finish-script.sh ~/.git-scripts/git-finish.sh
 chmod +x ~/.git-scripts/*.sh  # macOS/Linux only
 ```
 
+On Windows, scripts must run under Git Bash (not PowerShell). The aliases call `bash ~/.git-scripts/git-commit.sh`, so Git for Windows must be installed.
+
 **Manual testing checklist (from CONTRIBUTING.md):**
 ```bash
+git init-flow                 # creates develop from main, pushes to origin
 git start feature 123_test    # branch creation
 git c                          # interactive commit
 git finish                     # merge + close
@@ -61,20 +64,19 @@ git finish
    - `support/*` → `main` only
 4. Auto-generates a merge message: CC type prefix (`feat`/`fix`/`chore(release)` etc.) + subject from branch name + bullet-point commit list
 5. Appends `Close #N` footer if issue number is present
-6. Shows the message and asks `Accept? [Y/n/e(dit)]`
-7. Updates CHANGELOG with today's date for release/hotfix, auto-commits
+6. Shows the message and asks `Accept? [Y/n/e(dit)]` — unlike `git c`, the edit path prompts inline (no editor re-open)
+7. Updates CHANGELOG with today's date for release/hotfix, auto-commits — **requires** the version header (e.g., `## [1.0.0]`) to already exist in `CHANGELOG.md` without a date
 8. Executes `git merge --no-ff` for each target
 9. Creates annotated tag for release/hotfix
 10. Prompts push to origin and branch deletion
 
-### Branch and Merge Logic
+### Utility Aliases (from `gitconfig-aliases.ini`)
 
-Merge targets depend on branch type:
-- `feature/*`, `bugfix/*` → `develop` only
-- `release/*`, `hotfix/*` → `main` + `develop`, creates a version tag, updates CHANGELOG
-- `support/*` → `main` only
-
-Issue numbers are extracted from branch names (e.g., `feature/123_dark_mode` → `#123`) and injected into commit/merge messages.
+- `git init-flow` — creates `develop` from `main` and pushes to origin
+- `git start <type> <name>` — creates `type/name` branch from the correct base (`develop` or `main`)
+- `git publish` — pushes the current branch to origin
+- `git sync` — checks out `develop` and pulls
+- `git st-flow` — lists all active GitFlow branches (`feature/`, `bugfix/`, etc.)
 
 ### Error Handling
 
@@ -83,6 +85,9 @@ Scripts use `set -euo pipefail`. They validate Git state (clean working tree, co
 ## Code Style
 
 - Bash 4.0+; use `[[ ]]` for conditionals, `$(...)` for substitution
+- 2-space indentation
+- Always quote variables (e.g., `"$VARIABLE"`) to prevent word splitting
+- Prefer `printf` over `echo` for all user-facing output
 - All user-facing strings in English
 - ShellCheck must pass with no warnings before merging
 - Follow Conventional Commits for commit messages in this repo itself
