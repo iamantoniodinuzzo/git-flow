@@ -1,4 +1,4 @@
-# git-ai-flow
+# git-flow
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -33,42 +33,32 @@ A lightweight GitFlow toolkit with Conventional Commits automation and interacti
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/iamantoniodinuzzo/git-ai-flow.git
-cd git-ai-flow
+git clone https://github.com/iamantoniodinuzzo/git-flow.git
+cd git-flow
 ```
 
-### 2. Copy the scripts
+### 2. Run the install script
+
+#### Windows (PowerShell or CMD)
+
+```powershell
+.\install.bat
+```
 
 #### macOS / Linux
 
 ```bash
-mkdir -p ~/.git-scripts
-cp scripts/git-commit-script.sh ~/.git-scripts/git-commit.sh
-cp scripts/git-finish-script.sh ~/.git-scripts/git-finish.sh
-chmod +x ~/.git-scripts/*.sh
+bash install.sh
 ```
 
-#### Windows (PowerShell)
+The script:
+- Copies the scripts to `~/.git-scripts/`
+- Sets executable permissions (macOS / Linux only)
+- Links `gitconfig-aliases.ini` to your `~/.gitconfig` via `include.path` — run it once and all future alias changes are picked up automatically
 
-```powershell
-New-Item -ItemType Directory -Force -Path "$HOME\.git-scripts"
-Copy-Item "scripts\git-commit-script.sh" -Destination "$HOME\.git-scripts\git-commit.sh"
-Copy-Item "scripts\git-finish-script.sh" -Destination "$HOME\.git-scripts\git-finish.sh"
-# chmod is not needed on Windows
-```
+> **Updating:** Re-run the same command any time after pulling changes to refresh the installed scripts.
 
-### 3. Configure Git aliases
-
-Open `~/.gitconfig` (`%USERPROFILE%\.gitconfig` on Windows) and append the contents of `gitconfig-aliases.ini`.
-
-> **Warning:** `gitconfig-aliases.ini` starts with a `[user]` block. If you already have one in your `~/.gitconfig`, skip those lines and only append the `[alias]` section.
->
-> Check first:
-> ```bash
-> grep "\[user\]" ~/.gitconfig
-> ```
-
-### 4. Set your editor
+### 3. Set your editor
 
 The `git c` command opens the editor defined by `core.editor` in your Git config.
 
@@ -304,7 +294,7 @@ Ensure `core.editor` is set in your `~/.gitconfig`. VS Code users must use `code
 Run `chmod +x ~/.git-scripts/*.sh`.
 
 **`bash: command not found` or scripts don't run (Windows)**
-Ensure Git for Windows is installed. The aliases call `bash`, which must be on your PATH. Open a new Git Bash terminal after installation.
+Ensure Git for Windows is installed. The aliases call `bash`, which must be on your PATH. Open a new Git Bash terminal after installation. To install or update the scripts from PowerShell, use `.\install.bat` instead of `bash install.sh`.
 
 **Alias conflict**
 Check `~/.gitconfig` for existing aliases that might conflict with `c`, `finish`, or `start`. Rename the conflicting alias.
