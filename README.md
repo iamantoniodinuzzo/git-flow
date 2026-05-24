@@ -16,6 +16,7 @@ A lightweight GitFlow toolkit with Conventional Commits automation and interacti
 - **Smart Commits:** Opens your editor with a Conventional Commits template pre-filled with branch context and staged file summary.
 - **Automated Merges:** Auto-generates merge messages from branch metadata and commit history, with issue references (e.g., `Close #123`).
 - **Clean GitFlow:** Ready-to-use aliases for starting and finishing features, bugfixes, releases, and hotfixes.
+- **CI/Automation Ready:** `git finish --yes` skips all interactive prompts for use in pipelines, AI agents, or scripts.
 - **Issue Integration:** Automatically extracts issue numbers from branch names (e.g., `feature/123_dark_mode` → `#123`).
 
 ## Requirements
@@ -186,6 +187,21 @@ Close #123
 🎉 Done! → "feat: merge feature/123_dark_mode into develop"
 ```
 
+**Non-interactive mode (`--yes` / `-y`):**
+
+Use `git finish --yes` to skip all prompts — useful in CI pipelines, AI agents, or scripts:
+
+```
+$ git finish --yes
+🔍 Branch: feature/123_dark_mode → merge into: develop
+...
+✅ Merged into develop
+📤 Pushing develop...
+✅ Push completed
+🗑️  Branch 'feature/123_dark_mode' deleted
+🎉 Done! → "feat: merge feature/123_dark_mode into develop"
+```
+
 **Error — uncommitted changes:**
 ```
 $ git finish
@@ -268,7 +284,8 @@ Close #456
 | `git init-flow` | Creates `develop` from `main` or `master` and pushes to origin |
 | `git start <type> <name>` | Creates `type/name` from the correct base branch (`develop` or `main`/`master`) |
 | `git c` | Interactive commit with Conventional Commits template |
-| `git finish` | Merges the current branch, tags if release/hotfix, cleans up |
+| `git finish` | Merges the current branch, tags if release/hotfix, cleans up (interactive) |
+| `git finish --yes` | Same as above but skips all prompts (non-interactive mode) |
 | `git publish` | Pushes the current branch to origin |
 | `git sync` | Checks out `develop` and pulls latest |
 | `git st-flow` | Lists all active GitFlow branches |
