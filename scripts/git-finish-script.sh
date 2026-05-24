@@ -4,6 +4,15 @@
 
 set -euo pipefail
 
+# ─── Flag parsing ────────────────────────────────────────────────
+AUTO_YES=false
+for arg in "$@"; do
+  case "$arg" in
+    --yes|-y) AUTO_YES=true ;;
+    *) printf "❌ Unknown flag: %s\n" "$arg"; exit 1 ;;
+  esac
+done
+
 # ─── Verification of clean working directory ─────────────────────
 if ! git diff-index --quiet HEAD --; then
   printf "❌ Clean your working directory before merging. Commit or stash changes.\n"
@@ -99,9 +108,13 @@ fi
 printf "\n💬 Merge message:\n"
 printf "%s\n" "$AI_MSG"
 [ -n "$CLOSE_REF" ] && printf "%s\n" "$CLOSE_REF"
-printf "\n   Accept? [Y/n/e(dit)] (default: y) → "
-read -r CHOICE
-CHOICE=${CHOICE:-y}
+if [ "$AUTO_YES" = true ]; then
+  CHOICE="y"
+else
+  printf "\n   Accept? [Y/n/e(dit)] (default: y) → "
+  read -r CHOICE
+  CHOICE=${CHOICE:-y}
+fi
 
 case "$CHOICE" in
   n|N)
@@ -176,9 +189,13 @@ if [ "$TYPE" = "release" ] || [ "$TYPE" = "hotfix" ]; then
 fi
 
 # ─── Push to origin (optional/prompted) ──────────────────────────
-printf "\n🚀 Push to origin? [Y/n] (default: y) → "
-read -r PUSH_CHOICE
-PUSH_CHOICE=${PUSH_CHOICE:-y}
+if [ "$AUTO_YES" = true ]; then
+  PUSH_CHOICE="y"
+else
+  printf "\n🚀 Push to origin? [Y/n] (default: y) → "
+  read -r PUSH_CHOICE
+  PUSH_CHOICE=${PUSH_CHOICE:-y}
+fi
 
 if [[ "$PUSH_CHOICE" =~ ^[Yy]$ ]]; then
   for TARGET in "${TARGETS[@]}"; do
@@ -193,15 +210,23 @@ if [[ "$PUSH_CHOICE" =~ ^[Yy]$ ]]; then
 fi
 
 # ─── Cleanup ─────────────────────────────────────────────────────
-printf "\n🗑️  Delete branch '%s'? [Y/n] (default: y) → "
-read -r DEL_CHOICE
-DEL_CHOICE=${DEL_CHOICE:-y}
+if [ "$AUTO_YES" = true ]; then
+  DEL_CHOICE="y"
+else
+  printf "\n🗑️  Delete branch '%s'? [Y/n] (default: y) → " "$CURRENT"
+  read -r DEL_CHOICE
+  DEL_CHOICE=${DEL_CHOICE:-y}
+fi
 
 if [[ "$DEL_CHOICE" =~ ^[Yy]$ ]]; then
   if ! git branch -d "$CURRENT"; then
-    printf "⚠️  Could not delete branch '%s' with -d. Force delete? [y/N] → " "$CURRENT"
-    read -r FORCE_DEL
-    FORCE_DEL=${FORCE_DEL:-n}
+    if [ "$AUTO_YES" = true ]; then
+      FORCE_DEL="y"
+    else
+      printf "⚠️  Could not delete branch '%s' with -d. Force delete? [y/N] → " "$CURRENT"
+      read -r FORCE_DEL
+      FORCE_DEL=${FORCE_DEL:-n}
+    fi
     if [[ "$FORCE_DEL" =~ ^[Yy]$ ]]; then
       git branch -D "$CURRENT"
       printf "🗑️  Branch '%s' deleted (forced)\n" "$CURRENT"
