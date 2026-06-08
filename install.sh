@@ -25,11 +25,14 @@ printf "===================\n"
 
 # --- scripts ---
 mkdir -p "$SCRIPTS_DIR"
-cp "$REPO_DIR/scripts/git-commit-script.sh" "$SCRIPTS_DIR/git-commit.sh"
+cp "$REPO_DIR/scripts/git-commit-script.sh"  "$SCRIPTS_DIR/git-commit.sh"
 cp "$REPO_DIR/scripts/git-finish-script.sh" "$SCRIPTS_DIR/git-finish.sh"
+cp "$REPO_DIR/scripts/git-start-script.sh"  "$SCRIPTS_DIR/git-start.sh"
+cp "$REPO_DIR/scripts/git-publish-script.sh" "$SCRIPTS_DIR/git-publish.sh"
 
 if [[ "$OS" != "windows" ]]; then
-  chmod +x "$SCRIPTS_DIR/git-commit.sh" "$SCRIPTS_DIR/git-finish.sh"
+  chmod +x "$SCRIPTS_DIR/git-commit.sh" "$SCRIPTS_DIR/git-finish.sh" \
+            "$SCRIPTS_DIR/git-start.sh" "$SCRIPTS_DIR/git-publish.sh"
 fi
 
 printf "Scripts   -> %s\n" "$SCRIPTS_DIR"

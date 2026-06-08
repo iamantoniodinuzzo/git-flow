@@ -214,6 +214,29 @@ $ git finish
 ⚠️  No commits found compared to develop. Have you committed your changes?
 ```
 
+**JSON output (`--json`):**
+
+Pass `--json` to any command to get machine-readable output on stdout. Human-readable text is suppressed. `--json` implies `--yes` for `git finish` (interactive prompts would corrupt the JSON stream).
+
+```
+$ git start feature 42_foo --json
+{"status":"ok","branch":"feature/42_foo","base":"develop"}
+
+$ git publish --json
+{"status":"ok","branch":"feature/42_foo","remote":"origin"}
+
+$ git finish --json
+{"status":"ok","branch":"feature/42_foo","merged_into":["develop"],"tag":null,"pushed":true,"deleted":true}
+```
+
+On error, every command returns a structured object with `status`, `code`, and `message`:
+```
+$ git finish --json
+{"status":"error","code":"dirty_working_tree","message":"Clean your working directory before merging. Commit or stash changes."}
+```
+
+Exit codes are always meaningful: `0` on success, non-zero on error — regardless of `--json`.
+
 ### Release & Hotfix Workflow
 
 #### 1. Prepare the Changelog
@@ -286,7 +309,10 @@ Close #456
 | `git c` | Interactive commit with Conventional Commits template |
 | `git finish` | Merges the current branch, tags if release/hotfix, cleans up (interactive) |
 | `git finish --yes` | Same as above but skips all prompts (non-interactive mode) |
+| `git finish --json` | Non-interactive, outputs structured JSON result to stdout |
 | `git publish` | Pushes the current branch to origin |
+| `git publish --json` | Push, outputs structured JSON result to stdout |
+| `git start <type> <name> --json` | Branch creation, outputs structured JSON result to stdout |
 | `git sync` | Checks out `develop` and pulls latest |
 | `git st-flow` | Lists all active GitFlow branches |
 
