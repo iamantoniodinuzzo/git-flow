@@ -11,9 +11,11 @@
 ```text
 git-ai-flow/
 ├── scripts/
-│   ├── git-commit-script.sh   # Interactive commit with CC template
-│   └── git-finish-script.sh   # Auto-generated merge message + branch close
-├── gitconfig-aliases.ini      # Ready-to-paste Git alias block
+│   ├── git-commit-script.sh    # Interactive commit with CC template
+│   ├── git-finish-script.sh    # Auto-generated merge message + branch close
+│   ├── git-start-script.sh     # Branch creation (powers git start)
+│   └── git-publish-script.sh   # Push to origin (powers git publish)
+├── gitconfig-aliases.ini       # Ready-to-paste Git alias block
 ├── docs/
 │   └── documentation.md       # This file
 ├── CONTRIBUTING.md
@@ -163,12 +165,39 @@ Deletes the local branch after successful merges.
 | Alias | Script / Command | Description |
 |---|---|---|
 | `git init-flow` | inline shell function | Creates `develop` branch from `main`/`master` and pushes to origin |
-| `git start <type> <name>` | inline shell function | Creates branch from correct base after pulling latest |
+| `git start <type> <name> [--json]` | `git-start-script.sh` | Creates branch from correct base after pulling latest |
 | `git c` | `git-commit-script.sh` | Interactive CC commit with editor template |
-| `git finish` | `git-finish-script.sh` | Auto-generated merge message + close issue + optional tag |
-| `git publish` | inline | Push current branch to origin |
+| `git finish [--yes\|--json]` | `git-finish-script.sh` | Auto-generated merge message + close issue + optional tag |
+| `git publish [--json]` | `git-publish-script.sh` | Push current branch to origin |
 | `git st-flow` | inline grep | List all active flow branches |
 | `git sync` | inline | Checkout develop + pull |
+
+### JSON output mode (`--json`)
+
+All scriptable commands (`git start`, `git finish`, `git publish`) accept `--json` to emit a single JSON object on stdout. Human-readable text is suppressed. Exit codes remain meaningful.
+
+**Success shapes:**
+
+```json
+// git start feature 42_foo --json
+{"status":"ok","branch":"feature/42_foo","base":"develop"}
+
+// git publish --json
+{"status":"ok","branch":"feature/42_foo","remote":"origin"}
+
+// git finish --json
+{"status":"ok","branch":"feature/42_foo","merged_into":["develop"],"tag":null,"pushed":true,"deleted":true}
+```
+
+**Error shape (all commands):**
+
+```json
+{"status":"error","code":"dirty_working_tree","message":"Clean your working directory before merging. Commit or stash changes."}
+```
+
+Known error codes: `dirty_working_tree`, `not_on_branch`, `no_main_branch`, `develop_missing`, `no_commits`, `merge_conflict`, `tag_failed`, `checkout_failed`, `push_failed`, `detached_head`, `usage`, `unknown_flag`.
+
+`--json` implies `--yes` for `git finish` (interactive prompts would interleave with the JSON stream).
 
 ---
 
