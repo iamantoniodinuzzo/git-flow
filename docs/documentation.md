@@ -49,7 +49,7 @@ Exits immediately if nothing is staged, preventing an empty commit.
 
 **2. Issue extraction**
 ```bash
-NAME=$(echo "$CURRENT" | cut -d/ -f2)
+NAME=$(echo "$CURRENT" | cut -d/ -f2-)
 
 # Extract issue number (e.g. feature/123_dark_mode → 123)
 if [[ "$NAME" =~ ^([0-9]+)_ ]]; then
