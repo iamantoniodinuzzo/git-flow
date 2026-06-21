@@ -37,6 +37,13 @@ fi
 
 printf "Scripts   -> %s\n" "$SCRIPTS_DIR"
 
+# --- Claude Code skill (copy, idempotent) ---
+CLAUDE_SKILLS_DIR="$HOME/.claude/skills/git-workflow"
+SKILL_SRC="$REPO_DIR/.claude/skills/git-workflow/SKILL.md"
+mkdir -p "$CLAUDE_SKILLS_DIR"
+cp "$SKILL_SRC" "$CLAUDE_SKILLS_DIR/SKILL.md"
+printf "Skill     -> %s\n" "$CLAUDE_SKILLS_DIR"
+
 # --- gitconfig aliases (link, idempotent) ---
 EXISTING_INCLUDES="$(git config --global --get-all include.path 2>/dev/null || true)"
 if printf '%s\n' "$EXISTING_INCLUDES" | grep -qF "$ALIASES_FILE"; then

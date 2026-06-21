@@ -56,8 +56,9 @@ The script:
 - Copies the scripts to `~/.git-scripts/`
 - Sets executable permissions (macOS / Linux only)
 - Links `gitconfig-aliases.ini` to your `~/.gitconfig` via `include.path` — run it once and all future alias changes are picked up automatically
+- Installs a [Claude Code](https://claude.ai/code) skill to `~/.claude/skills/git-workflow/` so Claude can drive the git-flow commands in any repo
 
-> **Updating:** Re-run the same command any time after pulling changes to refresh the installed scripts.
+> **Updating:** Re-run the same command any time after pulling changes to refresh the installed scripts and skill.
 
 ### 3. Set your editor
 
@@ -88,6 +89,27 @@ git config --global core.editor "'C:/Program Files/Notepad++/notepad++.exe' -mul
 # Vim (bundled with Git for Windows)
 git config --global core.editor "vim"
 ```
+
+### 4. Claude Code integration (optional)
+
+`install.sh` automatically installs a Claude Code skill to `~/.claude/skills/git-workflow/`.
+Once installed, Claude knows:
+
+- When and how to use each alias (`git start`, `git c`, `git finish`, `git publish`, etc.)
+- Branch routing rules and naming conventions
+- The `--json` flag for structured, non-interactive output (preferred in AI-agent flows)
+
+When operating programmatically, Claude will use `--json` so it can parse results and errors reliably:
+
+```bash
+git start feature 42_foo --json
+# {"status":"ok","branch":"feature/42_foo","base":"develop"}
+
+git finish --json
+# {"status":"ok","branch":"feature/42_foo","merged_into":["develop"],"tag":null,"pushed":true,"deleted":true}
+```
+
+> **Requires [Claude Code](https://claude.ai/code).** If you do not use Claude Code, this step has no effect.
 
 ---
 

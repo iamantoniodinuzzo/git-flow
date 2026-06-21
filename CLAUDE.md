@@ -38,9 +38,12 @@ git finish
 ### Core Files
 
 - `scripts/git-commit-script.sh` — invoked by `git c` alias; opens the user's editor with a Conventional Commits template, validates the message, injects issue references, and commits
-- `scripts/git-finish-script.sh` — invoked by `git finish`; auto-generates a merge message from branch metadata and commit history, then merges, tags, and cleans up
+- `scripts/git-finish-script.sh` — invoked by `git finish`; auto-generates a merge message from branch metadata and commit history, then merges, tags, and cleans up; supports `--yes`/`--json`
+- `scripts/git-start-script.sh` — invoked by `git start`; creates a typed branch from the correct base; supports `--json`
+- `scripts/git-publish-script.sh` — invoked by `git publish`; pushes current branch to origin; supports `--json`
 - `gitconfig-aliases.ini` — Git aliases installed to `~/.gitconfig`; defines `git start`, `git finish`, `git c`, `git publish`, `git sync`, `git st-flow`, `git init-flow`
-- Installation is manual: copy scripts to `~/.git-scripts/` and patch `~/.gitconfig`
+- `.claude/skills/git-workflow/SKILL.md` — Claude Code skill; AI-facing contract for all aliases. `install.sh` copies it to `~/.claude/skills/git-workflow/SKILL.md` so it is active globally in any repo using these aliases
+- Installation: run `bash install.sh` (or `.\install.bat` on Windows); copies scripts to `~/.git-scripts/`, links aliases, installs the skill
 
 ### Commit Workflow (`git c`)
 
@@ -73,10 +76,11 @@ git finish
 ### Utility Aliases (from `gitconfig-aliases.ini`)
 
 - `git init-flow` — creates `develop` from `main`/`master` and pushes to origin
-- `git start <type> <name>` — creates `type/name` branch from the correct base (`develop` or `main`/`master`)
-- `git publish` — pushes the current branch to origin
+- `git start <type> <name> [--json]` — creates `type/name` branch from the correct base (`develop` or `main`/`master`)
+- `git publish [--json]` — pushes the current branch to origin
 - `git sync` — checks out `develop` and pulls
 - `git st-flow` — lists all active GitFlow branches (`feature/`, `bugfix/`, etc.)
+- `--json` flag — available on `git start`, `git publish`, `git finish`; suppresses human output, emits one structured JSON line, implies `--yes` on `git finish`; preferred for AI-agent / CI use
 
 ### Error Handling
 

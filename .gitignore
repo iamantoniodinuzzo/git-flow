@@ -9,6 +9,7 @@ test-repos/
 tmp/
 
 # AI Tools (Claude/Gemini)
-.claude/
+.claude/settings.local.json
+.claude/settings.json
 .gemini/
 *.md.plan
