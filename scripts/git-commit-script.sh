@@ -13,19 +13,22 @@ fi
 
 # ─── Branch and issue info ───────────────────────────────────────
 CURRENT=$(git symbolic-ref --short HEAD 2>/dev/null || echo "detached")
-NAME=$(echo "$CURRENT" | cut -d/ -f2)
+NAME=$(echo "$CURRENT" | cut -d/ -f2-)
 
-# Extract issue number (e.g. feature/123_dark_mode → 123)
-if [[ "$NAME" =~ ^([0-9]+)_ ]]; then
-  ISSUE_NUM="${BASH_REMATCH[1]}"
-else
-  ISSUE_NUM=""
+# Extract issue numbers (e.g. feature/44-45_dark → 44 45 ; feature/123_x → 123)
+ISSUE_NUMS=()
+if [[ "$NAME" =~ ^([0-9]+([-_][0-9]+)*)_ ]]; then
+  IFS='-_' read -ra ISSUE_NUMS <<< "${BASH_REMATCH[1]}"
 fi
 
-if [ -n "$ISSUE_NUM" ]; then
-  ISSUE_REF="(ref #$ISSUE_NUM)"
-else
-  ISSUE_REF=""
+ISSUE_REF=""
+if [ ${#ISSUE_NUMS[@]} -gt 0 ]; then
+  REFS=""
+  for n in "${ISSUE_NUMS[@]}"; do
+    [ -n "$REFS" ] && REFS+=" "
+    REFS+="#$n"
+  done
+  ISSUE_REF="(ref $REFS)"
 fi
 
 # ─── Detect editor ───────────────────────────────────────────────
@@ -44,8 +47,8 @@ trap 'rm -f "$TMPFILE"' EXIT
   printf "# Body:    blank line + bullet points describing specific changes\n"
   printf "#\n"
   printf "# Branch:  %s\n" "$CURRENT"
-  if [ -n "$ISSUE_NUM" ]; then
-    printf "# Issue:   #%s (will be appended automatically as \"%s\")\n" "$ISSUE_NUM" "$ISSUE_REF"
+  if [ ${#ISSUE_NUMS[@]} -gt 0 ]; then
+    printf "# Issue:   %s (will be appended automatically as \"%s\")\n" "${ISSUE_NUMS[*]/#/#}" "$ISSUE_REF"
   fi
   printf "#\n"
   printf "# Staged changes:\n"

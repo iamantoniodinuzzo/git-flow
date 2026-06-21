@@ -16,6 +16,7 @@ A lightweight GitFlow toolkit with Conventional Commits automation and interacti
 - **Smart Commits:** Opens your editor with a Conventional Commits template pre-filled with branch context and staged file summary.
 - **Automated Merges:** Auto-generates merge messages from branch metadata and commit history, with issue references (e.g., `Close #123`).
 - **Clean GitFlow:** Ready-to-use aliases for starting and finishing features, bugfixes, releases, and hotfixes.
+- **CI/Automation Ready:** `git finish --yes` skips all interactive prompts for use in pipelines, AI agents, or scripts.
 - **Issue Integration:** Automatically extracts issue numbers from branch names (e.g., `feature/123_dark_mode` → `#123`).
 
 ## Requirements
@@ -55,8 +56,9 @@ The script:
 - Copies the scripts to `~/.git-scripts/`
 - Sets executable permissions (macOS / Linux only)
 - Links `gitconfig-aliases.ini` to your `~/.gitconfig` via `include.path` — run it once and all future alias changes are picked up automatically
+- Installs a [Claude Code](https://claude.ai/code) skill to `~/.claude/skills/git-workflow/` so Claude can drive the git-flow commands in any repo
 
-> **Updating:** Re-run the same command any time after pulling changes to refresh the installed scripts.
+> **Updating:** Re-run the same command any time after pulling changes to refresh the installed scripts and skill.
 
 ### 3. Set your editor
 
@@ -87,6 +89,27 @@ git config --global core.editor "'C:/Program Files/Notepad++/notepad++.exe' -mul
 # Vim (bundled with Git for Windows)
 git config --global core.editor "vim"
 ```
+
+### 4. Claude Code integration (optional)
+
+`install.sh` automatically installs a Claude Code skill to `~/.claude/skills/git-workflow/`.
+Once installed, Claude knows:
+
+- When and how to use each alias (`git start`, `git c`, `git finish`, `git publish`, etc.)
+- Branch routing rules and naming conventions
+- The `--json` flag for structured, non-interactive output (preferred in AI-agent flows)
+
+When operating programmatically, Claude will use `--json` so it can parse results and errors reliably:
+
+```bash
+git start feature 42_foo --json
+# {"status":"ok","branch":"feature/42_foo","base":"develop"}
+
+git finish --json
+# {"status":"ok","branch":"feature/42_foo","merged_into":["develop"],"tag":null,"pushed":true,"deleted":true}
+```
+
+> **Requires [Claude Code](https://claude.ai/code).** If you do not use Claude Code, this step has no effect.
 
 ---
 
@@ -186,6 +209,21 @@ Close #123
 🎉 Done! → "feat: merge feature/123_dark_mode into develop"
 ```
 
+**Non-interactive mode (`--yes` / `-y`):**
+
+Use `git finish --yes` to skip all prompts — useful in CI pipelines, AI agents, or scripts:
+
+```
+$ git finish --yes
+🔍 Branch: feature/123_dark_mode → merge into: develop
+...
+✅ Merged into develop
+📤 Pushing develop...
+✅ Push completed
+🗑️  Branch 'feature/123_dark_mode' deleted
+🎉 Done! → "feat: merge feature/123_dark_mode into develop"
+```
+
 **Error — uncommitted changes:**
 ```
 $ git finish
@@ -197,6 +235,29 @@ $ git finish
 $ git finish
 ⚠️  No commits found compared to develop. Have you committed your changes?
 ```
+
+**JSON output (`--json`):**
+
+Pass `--json` to any command to get machine-readable output on stdout. Human-readable text is suppressed. `--json` implies `--yes` for `git finish` (interactive prompts would corrupt the JSON stream).
+
+```
+$ git start feature 42_foo --json
+{"status":"ok","branch":"feature/42_foo","base":"develop"}
+
+$ git publish --json
+{"status":"ok","branch":"feature/42_foo","remote":"origin"}
+
+$ git finish --json
+{"status":"ok","branch":"feature/42_foo","merged_into":["develop"],"tag":null,"pushed":true,"deleted":true}
+```
+
+On error, every command returns a structured object with `status`, `code`, and `message`:
+```
+$ git finish --json
+{"status":"error","code":"dirty_working_tree","message":"Clean your working directory before merging. Commit or stash changes."}
+```
+
+Exit codes are always meaningful: `0` on success, non-zero on error — regardless of `--json`.
 
 ### Release & Hotfix Workflow
 
@@ -268,8 +329,12 @@ Close #456
 | `git init-flow` | Creates `develop` from `main` or `master` and pushes to origin |
 | `git start <type> <name>` | Creates `type/name` from the correct base branch (`develop` or `main`/`master`) |
 | `git c` | Interactive commit with Conventional Commits template |
-| `git finish` | Merges the current branch, tags if release/hotfix, cleans up |
+| `git finish` | Merges the current branch, tags if release/hotfix, cleans up (interactive) |
+| `git finish --yes` | Same as above but skips all prompts (non-interactive mode) |
+| `git finish --json` | Non-interactive, outputs structured JSON result to stdout |
 | `git publish` | Pushes the current branch to origin |
+| `git publish --json` | Push, outputs structured JSON result to stdout |
+| `git start <type> <name> --json` | Branch creation, outputs structured JSON result to stdout |
 | `git sync` | Checks out `develop` and pulls latest |
 | `git st-flow` | Lists all active GitFlow branches |
 

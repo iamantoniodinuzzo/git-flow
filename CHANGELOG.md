@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-06-21
+
+### Added
+- `--json` flag on `git start`, `git publish`, and `git finish`: suppresses human-readable output and emits a single structured JSON line to stdout. `--json` implies `--yes` on `git finish`. Exit codes remain meaningful regardless of the flag. Designed for AI-agent flows, CI pipelines, and non-TTY contexts.
+- `git start` and `git publish` extracted from inline aliases to dedicated scripts (`git-start-script.sh`, `git-publish-script.sh`), enabling proper flag parsing, structured error output, and idempotent install.
+- Multi-issue branch support: branch names like `feature/44-45_description` now emit `Close #44, Close #45` in the merge message footer.
+- Claude Code skill (`SKILL.md`) bundled in `.claude/skills/git-workflow/` and auto-installed to `~/.claude/skills/git-workflow/` by `install.sh` / `install.bat`. Gives Claude Code awareness of all aliases, branch routing rules, `--json` semantics, and lifecycle workflows.
+
 ## [0.5.0] - 2026-05-24
 
 ### Added

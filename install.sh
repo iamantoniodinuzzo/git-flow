@@ -25,14 +25,24 @@ printf "===================\n"
 
 # --- scripts ---
 mkdir -p "$SCRIPTS_DIR"
-cp "$REPO_DIR/scripts/git-commit-script.sh" "$SCRIPTS_DIR/git-commit.sh"
+cp "$REPO_DIR/scripts/git-commit-script.sh"  "$SCRIPTS_DIR/git-commit.sh"
 cp "$REPO_DIR/scripts/git-finish-script.sh" "$SCRIPTS_DIR/git-finish.sh"
+cp "$REPO_DIR/scripts/git-start-script.sh"  "$SCRIPTS_DIR/git-start.sh"
+cp "$REPO_DIR/scripts/git-publish-script.sh" "$SCRIPTS_DIR/git-publish.sh"
 
 if [[ "$OS" != "windows" ]]; then
-  chmod +x "$SCRIPTS_DIR/git-commit.sh" "$SCRIPTS_DIR/git-finish.sh"
+  chmod +x "$SCRIPTS_DIR/git-commit.sh" "$SCRIPTS_DIR/git-finish.sh" \
+            "$SCRIPTS_DIR/git-start.sh" "$SCRIPTS_DIR/git-publish.sh"
 fi
 
 printf "Scripts   -> %s\n" "$SCRIPTS_DIR"
+
+# --- Claude Code skill (copy, idempotent) ---
+CLAUDE_SKILLS_DIR="$HOME/.claude/skills/git-workflow"
+SKILL_SRC="$REPO_DIR/.claude/skills/git-workflow/SKILL.md"
+mkdir -p "$CLAUDE_SKILLS_DIR"
+cp "$SKILL_SRC" "$CLAUDE_SKILLS_DIR/SKILL.md"
+printf "Skill     -> %s\n" "$CLAUDE_SKILLS_DIR"
 
 # --- gitconfig aliases (link, idempotent) ---
 EXISTING_INCLUDES="$(git config --global --get-all include.path 2>/dev/null || true)"
