@@ -52,11 +52,10 @@ fi
 TYPE=$(echo "$CURRENT" | cut -d/ -f1)
 NAME=$(echo "$CURRENT" | cut -d/ -f2-)
 
-# Extract issue number (e.g. feature/123_dark_mode → 123)
-if [[ "$NAME" =~ ^([0-9]+)_ ]]; then
-  ISSUE_NUM="${BASH_REMATCH[1]}"
-else
-  ISSUE_NUM=""
+# Extract issue numbers (e.g. feature/44-45_dark → 44 45 ; feature/123_x → 123)
+ISSUE_NUMS=()
+if [[ "$NAME" =~ ^([0-9]+([-_][0-9]+)*)_ ]]; then
+  IFS='-_' read -ra ISSUE_NUMS <<< "${BASH_REMATCH[1]}"
 fi
 
 # Determine main branch (main or master)
@@ -117,12 +116,12 @@ fi
 BODY=$(echo "$COMMITS" | sed 's/^/- /')
 AI_MSG=$(printf "%s\n\n%s" "$SUBJECT" "$BODY")
 
-# Handle issue reference if present
-if [ -n "$ISSUE_NUM" ]; then
-  CLOSE_REF="Close #$ISSUE_NUM"
-else
-  CLOSE_REF=""
-fi
+# Handle issue reference(s) if present
+CLOSE_REF=""
+for n in "${ISSUE_NUMS[@]}"; do
+  [ -n "$CLOSE_REF" ] && CLOSE_REF+=", "
+  CLOSE_REF+="Close #$n"
+done
 
 # Compose final message with issue reference
 if [ -n "$CLOSE_REF" ]; then
