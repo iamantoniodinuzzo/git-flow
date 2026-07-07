@@ -12,8 +12,8 @@ user-invocable: true
 | Alias | Syntax | Backed by |
 |---|---|---|
 | `init-flow` | `git init-flow` | Inline alias — create `develop` from `main`/`master`, push to origin |
-| `start` | `git start <type> <name> [--json]` | `~/.git-scripts/git-start.sh` |
-| `c` | `git c` | `~/.git-scripts/git-commit.sh` — interactive Conventional Commit |
+| `start` | `git start <type> <name> [--json] [--no-issue]` | `~/.git-scripts/git-start.sh` |
+| `c` | `git c [-m <subject>] [--body <text>] [--json]` | `~/.git-scripts/git-commit.sh` — interactive Conventional Commit |
 | `finish` | `git finish [--yes\|-y] [--json]` | `~/.git-scripts/git-finish.sh` — merge, tag, CHANGELOG |
 | `publish` | `git publish [--json]` | `~/.git-scripts/git-publish.sh` — push current branch |
 | `st-flow` | `git st-flow` | Inline alias — list active flow branches |
