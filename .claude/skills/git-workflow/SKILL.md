@@ -33,13 +33,18 @@ user-invocable: true
 | `hotfix` | `main` / `master` |
 | `support` | `main` / `master` |
 
-**Naming convention — REQUIRED format: `<issue#>_<snake_case_name>`**
+**Naming convention — format: `<issue#>_<snake_case_name>`**
 
 ```bash
 git start feature 42_auth_login   # ✅ → feature/42_auth_login from develop
 git start feature issue-42-login  # ❌ wrong — no "issue-" prefix, use number only
 git start hotfix 1.0.2            # → hotfix/1.0.2 from main
 ```
+
+Required for auto issue-ref detection (`git c`, `git finish`) on `feature`/`bugfix`
+branches. `git start` warns (non-fatal, stderr only) if the prefix is missing on
+those types; pass `--no-issue` to silence it. `release`/`hotfix`/`support` use
+version-style names and are never checked.
 
 Multiple issues on one branch:
 ```bash
@@ -172,5 +177,6 @@ git finish --json
 - **`git finish` requires clean working directory** — commit or stash everything first.
 - **`git finish` refuses to run on `main`/`master`/`develop`** — never merges, tags, or deletes those branches; recover manually if a merge conflict left you there.
 - **`git start` requires `develop` to exist** (except `hotfix`/`support`) — run `git init-flow` first on a fresh repo.
+- **`git start feature`/`bugfix` warns (stderr, non-fatal) if `<issue#>_` prefix is missing** — branch is still created, but auto issue-ref in `git c`/`git finish` won't fire. Use `--no-issue` to silence.
 - **File exists on disk ≠ tracked by git** — verify with `git ls-files <path>`, not a filesystem check.
 - **CHANGELOG header must exist without a date** before `git finish` on release/hotfix — the script adds the date automatically; if already dated, it skips the update.

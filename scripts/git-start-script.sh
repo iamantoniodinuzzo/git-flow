@@ -22,21 +22,38 @@ emit_error() {
 # ─── Flag parsing ────────────────────────────────────────────────
 TYPE=""
 NAME=""
+NO_ISSUE=false
 for arg in "$@"; do
   case "$arg" in
-    --json) JSON=true ;;
-    -*)     emit_error "unknown_flag" "Unknown flag: $arg" ;;
+    --json)     JSON=true ;;
+    --no-issue) NO_ISSUE=true ;;
+    -*)         emit_error "unknown_flag" "Unknown flag: $arg" ;;
     *)
       if   [ -z "$TYPE" ]; then TYPE="$arg"
       elif [ -z "$NAME" ]; then NAME="$arg"
-      else emit_error "too_many_args" "Too many arguments. Usage: git start <type> <name> [--json]"
+      else emit_error "too_many_args" "Too many arguments. Usage: git start <type> <name> [--json] [--no-issue]"
       fi
       ;;
   esac
 done
 
 if [ -z "$NAME" ]; then
-  emit_error "usage" "Usage: git start <type> <name> [--json]. Example: git start feature 42_foo"
+  emit_error "usage" "Usage: git start <type> <name> [--json] [--no-issue]. Example: git start feature 42_foo"
+fi
+
+# Warn (non-fatal) when a feature/bugfix name lacks the <issue#>_ prefix that
+# git-commit.sh and git-finish.sh rely on for auto issue-ref detection (see
+# issue #11). Scoped to feature/bugfix only — release/hotfix/support use
+# version-style names (e.g. "1.2.0") with no issue number by design.
+# Written to stderr so --json stdout stays a single clean JSON line.
+if [ "$NO_ISSUE" = false ]; then
+  case "$TYPE" in
+    feature|bugfix)
+      if ! [[ "$NAME" =~ ^[0-9]+([-_][0-9]+)*_ ]]; then
+        printf '⚠️  Branch name "%s" has no <issue#>_ prefix — auto issue-ref in "git c"/"git finish" will be disabled. Use --no-issue to silence this warning.\n' "$NAME" >&2
+      fi
+      ;;
+  esac
 fi
 
 # ─── Detect main branch ─────────────────────────────────────────
