@@ -2,14 +2,14 @@
 
 ## Overview
 
-`git-ai-flow` is a set of Git aliases and Bash scripts that wrap common GitFlow operations and provide Conventional Commits automation with interactive commit workflows. The goal is to reduce friction in the commit and merge workflow while enforcing consistent message formatting through [Conventional Commits](https://www.conventionalcommits.org/).
+`git-flow` is a set of Git aliases and Bash scripts that wrap common GitFlow operations and provide Conventional Commits automation with interactive commit workflows. The goal is to reduce friction in the commit and merge workflow while enforcing consistent message formatting through [Conventional Commits](https://www.conventionalcommits.org/).
 
 ---
 
 ## Repository structure
 
 ```text
-git-ai-flow/
+git-flow/
 ├── scripts/
 │   ├── git-commit-script.sh    # Interactive commit with CC template
 │   ├── git-finish-script.sh    # Auto-generated merge message + branch close

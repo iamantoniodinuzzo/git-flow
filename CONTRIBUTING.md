@@ -1,6 +1,6 @@
-# Contributing to git-ai-flow
+# Contributing to git-flow
 
-Thank you for your interest in improving `git-ai-flow`! To maintain consistency and quality, please follow these guidelines.
+Thank you for your interest in improving `git-flow`! To maintain consistency and quality, please follow these guidelines.
 
 ## Development Environment Setup
 

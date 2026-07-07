@@ -20,7 +20,7 @@ if [[ "$OS" == "windows" ]] && command -v cygpath &>/dev/null; then
   ALIASES_FILE="$(cygpath -m "$ALIASES_FILE")"
 fi
 
-printf "git-ai-flow install\n"
+printf "git-flow install\n"
 printf "===================\n"
 
 # --- scripts ---

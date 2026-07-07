@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Project Is
 
-**git-ai-flow** is a GitFlow automation toolkit for Git that provides Conventional Commits automation and interactive commit workflows. It is distributed as Bash scripts and Git alias configuration — not a compiled application.
+**git-flow** is a GitFlow automation toolkit for Git that provides Conventional Commits automation and interactive commit workflows. It is distributed as Bash scripts and Git alias configuration — not a compiled application.
 
 ## Commands
 
