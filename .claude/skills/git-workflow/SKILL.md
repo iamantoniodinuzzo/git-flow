@@ -86,6 +86,12 @@ For `release/*` and `hotfix/*`: also updates `CHANGELOG.md` with current date an
 
 **Requires clean working directory.** Stash or commit everything first.
 
+**Refuses to run on `main`/`master`/`develop`.** These aren't flow branches; if a
+release/hotfix merge conflict left you checked out on one, resolve it manually
+(finish the merge commit, then `git tag` + `git push` yourself) instead of
+re-running `git finish` there — it exits with `on_protected_branch` and never
+merges, tags, or deletes that branch.
+
 ---
 
 ## `--json` flag — AI agent / CI mode
@@ -164,6 +170,7 @@ git finish --json
 
 - **GitHub does NOT auto-close issues on merge** — always run `gh issue close <n>` after merging.
 - **`git finish` requires clean working directory** — commit or stash everything first.
+- **`git finish` refuses to run on `main`/`master`/`develop`** — never merges, tags, or deletes those branches; recover manually if a merge conflict left you there.
 - **`git start` requires `develop` to exist** (except `hotfix`/`support`) — run `git init-flow` first on a fresh repo.
 - **File exists on disk ≠ tracked by git** — verify with `git ls-files <path>`, not a filesystem check.
 - **CHANGELOG header must exist without a date** before `git finish` on release/hotfix — the script adds the date automatically; if already dated, it skips the update.

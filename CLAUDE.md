@@ -60,7 +60,8 @@ git finish
 ### Merge Workflow (`git finish`)
 
 1. Validates clean working directory
-2. Parses branch type and name, extracts issue number
+2. Refuses to run on `main`/`master`/`develop` (`on_protected_branch`) — these are not flow branches; re-deriving type/name from them would misroute merge/tag/cleanup. Also guarded a second time at the cleanup step: `main`/`master`/`develop` are never deleted regardless of computed type.
+3. Parses branch type and name, extracts issue number
 3. Resolves merge targets by branch type:
    - `feature/*`, `bugfix/*` → `develop` only
    - `release/*`, `hotfix/*` → `main`/`master` + `develop`, creates version tag, updates CHANGELOG
