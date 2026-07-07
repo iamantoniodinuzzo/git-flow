@@ -12,8 +12,8 @@ user-invocable: true
 | Alias | Syntax | Backed by |
 |---|---|---|
 | `init-flow` | `git init-flow` | Inline alias — create `develop` from `main`/`master`, push to origin |
-| `start` | `git start <type> <name> [--json]` | `~/.git-scripts/git-start.sh` |
-| `c` | `git c` | `~/.git-scripts/git-commit.sh` — interactive Conventional Commit |
+| `start` | `git start <type> <name> [--json] [--no-issue]` | `~/.git-scripts/git-start.sh` |
+| `c` | `git c [-m <subject>] [--body <text>] [--json]` | `~/.git-scripts/git-commit.sh` — interactive Conventional Commit |
 | `finish` | `git finish [--yes\|-y] [--json]` | `~/.git-scripts/git-finish.sh` — merge, tag, CHANGELOG |
 | `publish` | `git publish [--json]` | `~/.git-scripts/git-publish.sh` — push current branch |
 | `st-flow` | `git st-flow` | Inline alias — list active flow branches |
@@ -33,13 +33,18 @@ user-invocable: true
 | `hotfix` | `main` / `master` |
 | `support` | `main` / `master` |
 
-**Naming convention — REQUIRED format: `<issue#>_<snake_case_name>`**
+**Naming convention — format: `<issue#>_<snake_case_name>`**
 
 ```bash
 git start feature 42_auth_login   # ✅ → feature/42_auth_login from develop
 git start feature issue-42-login  # ❌ wrong — no "issue-" prefix, use number only
 git start hotfix 1.0.2            # → hotfix/1.0.2 from main
 ```
+
+Required for auto issue-ref detection (`git c`, `git finish`) on `feature`/`bugfix`
+branches. `git start` warns (non-fatal, stderr only) if the prefix is missing on
+those types; pass `--no-issue` to silence it. `release`/`hotfix`/`support` use
+version-style names and are never checked.
 
 Multiple issues on one branch:
 ```bash
@@ -48,9 +53,11 @@ git start bugfix 44-45_fix_login  # → close both #44 and #45 on finish
 
 ---
 
-## `git c` — interactive commit
+## `git c` — commit
 
-Runs `~/.git-scripts/git-commit.sh`. Behavior:
+Runs `~/.git-scripts/git-commit.sh`. Two modes:
+
+**Interactive (default, no `-m`):**
 
 1. Validates staged files exist (aborts if nothing staged)
 2. Auto-detects issue number(s) from branch name (`feature/42_name` → `#42`)
@@ -58,6 +65,22 @@ Runs `~/.git-scripts/git-commit.sh`. Behavior:
 4. Strips `#` comment lines, validates non-empty, warns if not CC format
 5. Shows preview, prompts: accept (`Y`) / re-edit (`e`) / cancel (`n`)
 6. On accept: appends `(ref #<issue>)` to subject, runs `git commit`
+
+**Non-interactive (`-m`) — for AI agents / CI:**
+
+```bash
+git c -m "<subject>" [--body "<text>"] [--json]
+```
+
+- Skips the editor entirely; validates staged files exist first.
+- Auto-appends `(ref #N)` to the subject, same as interactive mode.
+- Warns (non-fatal) if the subject doesn't look like Conventional Commits.
+- `--body` adds a blank-line-separated body to the commit message.
+- `--json` requires `-m` (there's no editor to fall back to) and emits:
+  ```bash
+  git c -m "feat(auth): add login retry" --json
+  # {"status":"ok","branch":"feature/42_auth_login","sha":"abc123","message":"feat(auth): add login retry (ref #42)"}
+  ```
 
 **Always stage files before running `git c`.**
 
@@ -86,14 +109,21 @@ For `release/*` and `hotfix/*`: also updates `CHANGELOG.md` with current date an
 
 **Requires clean working directory.** Stash or commit everything first.
 
+**Refuses to run on `main`/`master`/`develop`.** These aren't flow branches; if a
+release/hotfix merge conflict left you checked out on one, resolve it manually
+(finish the merge commit, then `git tag` + `git push` yourself) instead of
+re-running `git finish` there — it exits with `on_protected_branch` and never
+merges, tags, or deletes that branch.
+
 ---
 
 ## `--json` flag — AI agent / CI mode
 
-All three script-backed commands (`git start`, `git publish`, `git finish`) support `--json`.
+All four script-backed commands (`git start`, `git c`, `git publish`, `git finish`) support `--json`.
 
 - Human-readable output is suppressed; only one JSON line goes to stdout.
 - `--json` implies `--yes` for `git finish` (interactive prompts would corrupt the JSON stream).
+- `--json` requires `-m` for `git c` (no editor in JSON mode).
 - Exit codes are always meaningful: `0` success, non-zero error — regardless of `--json`.
 
 **Success payloads:**
@@ -101,6 +131,9 @@ All three script-backed commands (`git start`, `git publish`, `git finish`) supp
 ```bash
 git start feature 42_foo --json
 # {"status":"ok","branch":"feature/42_foo","base":"develop"}
+
+git c -m "feat(auth): add login retry" --json
+# {"status":"ok","branch":"feature/42_foo","sha":"abc123","message":"feat(auth): add login retry (ref #42)"}
 
 git publish --json
 # {"status":"ok","branch":"feature/42_foo","remote":"origin"}
@@ -125,12 +158,12 @@ git finish --json
 ## Typical feature lifecycle
 
 ```bash
-git start feature 42_auth_login   # branch from develop
+git start feature 42_auth_login --json      # branch from develop
 # [write code]
-git add <files>                    # stage changes
-git c                              # Conventional Commit (auto issue ref)
-git finish --json                  # merge into develop, push, delete — JSON out
-gh issue close 42                  # GitHub does NOT auto-close on merge
+git add <files>                              # stage changes
+git c -m "feat(auth): add login retry" --json  # Conventional Commit (auto issue ref), non-interactive
+git finish --json                            # merge into develop, push, delete — JSON out
+gh issue close 42                            # GitHub does NOT auto-close on merge
 ```
 
 ---
@@ -164,6 +197,8 @@ git finish --json
 
 - **GitHub does NOT auto-close issues on merge** — always run `gh issue close <n>` after merging.
 - **`git finish` requires clean working directory** — commit or stash everything first.
+- **`git finish` refuses to run on `main`/`master`/`develop`** — never merges, tags, or deletes those branches; recover manually if a merge conflict left you there.
 - **`git start` requires `develop` to exist** (except `hotfix`/`support`) — run `git init-flow` first on a fresh repo.
+- **`git start feature`/`bugfix` warns (stderr, non-fatal) if `<issue#>_` prefix is missing** — branch is still created, but auto issue-ref in `git c`/`git finish` won't fire. Use `--no-issue` to silence.
 - **File exists on disk ≠ tracked by git** — verify with `git ls-files <path>`, not a filesystem check.
 - **CHANGELOG header must exist without a date** before `git finish` on release/hotfix — the script adds the date automatically; if already dated, it skips the update.

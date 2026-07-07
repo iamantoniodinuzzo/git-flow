@@ -37,7 +37,7 @@ git finish
 
 ### Core Files
 
-- `scripts/git-commit-script.sh` — invoked by `git c` alias; opens the user's editor with a Conventional Commits template, validates the message, injects issue references, and commits
+- `scripts/git-commit-script.sh` — invoked by `git c` alias; opens the user's editor with a Conventional Commits template, validates the message, injects issue references, and commits; supports `-m`/`--body`/`--json` for non-interactive use
 - `scripts/git-finish-script.sh` — invoked by `git finish`; auto-generates a merge message from branch metadata and commit history, then merges, tags, and cleans up; supports `--yes`/`--json`
 - `scripts/git-start-script.sh` — invoked by `git start`; creates a typed branch from the correct base; supports `--json`
 - `scripts/git-publish-script.sh` — invoked by `git publish`; pushes current branch to origin; supports `--json`
@@ -47,6 +47,9 @@ git finish
 
 ### Commit Workflow (`git c`)
 
+Supports `-m <subject> [--body <text>] [--json]` for non-interactive use (AI agents/CI); `--json` requires `-m`.
+
+**Interactive (default, no `-m`):**
 1. Validates staged files exist
 2. Extracts issue number from branch name (e.g., `feature/123_dark_mode` → `#123`)
 3. Detects editor via `git var GIT_EDITOR`
@@ -57,10 +60,13 @@ git finish
 8. Shows the final message and asks `Accept? [Y/n/e(dit)]` — Y=commit, n=cancel, e=reopen editor
 9. Executes `git commit -m "$FULL_MSG"`
 
+**Non-interactive (`-m`):** skips the editor/preview/confirm; still validates staged files and injects `(ref #N)`; outputs `{"status":"ok","branch":...,"sha":...,"message":...}` under `--json`.
+
 ### Merge Workflow (`git finish`)
 
 1. Validates clean working directory
-2. Parses branch type and name, extracts issue number
+2. Refuses to run on `main`/`master`/`develop` (`on_protected_branch`) — these are not flow branches; re-deriving type/name from them would misroute merge/tag/cleanup. Also guarded a second time at the cleanup step: `main`/`master`/`develop` are never deleted regardless of computed type.
+3. Parses branch type and name, extracts issue number
 3. Resolves merge targets by branch type:
    - `feature/*`, `bugfix/*` → `develop` only
    - `release/*`, `hotfix/*` → `main`/`master` + `develop`, creates version tag, updates CHANGELOG
@@ -76,7 +82,7 @@ git finish
 ### Utility Aliases (from `gitconfig-aliases.ini`)
 
 - `git init-flow` — creates `develop` from `main`/`master` and pushes to origin
-- `git start <type> <name> [--json]` — creates `type/name` branch from the correct base (`develop` or `main`/`master`)
+- `git start <type> <name> [--json] [--no-issue]` — creates `type/name` branch from the correct base (`develop` or `main`/`master`); for `feature`/`bugfix`, warns on stderr (non-fatal) if `<issue#>_` prefix is missing
 - `git publish [--json]` — pushes the current branch to origin
 - `git sync` — checks out `develop` and pulls
 - `git st-flow` — lists all active GitFlow branches (`feature/`, `bugfix/`, etc.)

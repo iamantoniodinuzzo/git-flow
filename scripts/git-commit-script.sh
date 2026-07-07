@@ -4,11 +4,53 @@
 
 set -euo pipefail
 
+# ─── Helpers ────────────────────────────────────────────────────
+JSON=false
+
+json_escape() { printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'; }
+
+emit_error() {
+  if [ "$JSON" = true ]; then
+    printf '{"status":"error","code":"%s","message":"%s"}\n' \
+      "$1" "$(json_escape "$2")"
+  else
+    printf '❌ %s\n' "$2"
+  fi
+  exit 1
+}
+
+# ─── Flag parsing ────────────────────────────────────────────────
+MESSAGE=""
+COMMIT_BODY=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -m)
+      MESSAGE="${2:-}"
+      [ -z "$MESSAGE" ] && emit_error "usage" "Missing value for -m. Usage: git c -m <subject> [--body <text>] [--json]"
+      shift 2
+      ;;
+    --body)
+      COMMIT_BODY="${2:-}"
+      shift 2
+      ;;
+    --json)
+      JSON=true
+      shift
+      ;;
+    *)
+      emit_error "unknown_flag" "Unknown flag: $1"
+      ;;
+  esac
+done
+
+if [ "$JSON" = true ] && [ -z "$MESSAGE" ]; then
+  emit_error "json_requires_message" "--json requires -m <subject> (an editor cannot be opened in JSON mode)."
+fi
+
 # ─── Verification of staged files ────────────────────────────────
 STAGED=$(git diff --cached --stat 2>/dev/null || echo "")
 if [ -z "$STAGED" ]; then
-  printf "⚠️  No files in staging. Run first: git add <files>\n"
-  exit 1
+  emit_error "nothing_staged" "No files in staging. Run first: git add <files>"
 fi
 
 # ─── Branch and issue info ───────────────────────────────────────
@@ -30,6 +72,38 @@ if [ ${#ISSUE_NUMS[@]} -gt 0 ]; then
   done
   ISSUE_REF="(ref $REFS)"
 fi
+
+# ─── Non-interactive path (-m given) ──────────────────────────────
+if [ -n "$MESSAGE" ]; then
+  if ! echo "$MESSAGE" | grep -qE '^(feat|fix|chore|refactor|docs|test|style|perf)(\(.*\))?:'; then
+    printf "⚠️  Warning: message might not follow Conventional Commits format.\n" >&2
+  fi
+
+  if [ -n "$ISSUE_REF" ]; then
+    SUBJECT="${MESSAGE} ${ISSUE_REF}"
+  else
+    SUBJECT="$MESSAGE"
+  fi
+
+  if [ -n "$COMMIT_BODY" ]; then
+    FULL_MSG=$(printf "%s\n\n%s" "$SUBJECT" "$COMMIT_BODY")
+  else
+    FULL_MSG="$SUBJECT"
+  fi
+
+  git commit -m "$FULL_MSG" --quiet
+  SHA=$(git rev-parse --short HEAD)
+
+  if [ "$JSON" = true ]; then
+    printf '{"status":"ok","branch":"%s","sha":"%s","message":"%s"}\n' \
+      "$(json_escape "$CURRENT")" "$SHA" "$(json_escape "$SUBJECT")"
+  else
+    printf "✅ Commit successful: \"%s\"\n" "$SUBJECT"
+  fi
+  exit 0
+fi
+
+# ─── Interactive path ─────────────────────────────────────────────
 
 # ─── Detect editor ───────────────────────────────────────────────
 COMMIT_EDITOR=$(git var GIT_EDITOR 2>/dev/null || echo "vi")

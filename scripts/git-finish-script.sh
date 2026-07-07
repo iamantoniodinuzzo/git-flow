@@ -49,15 +49,6 @@ if [ -z "$CURRENT" ]; then
   emit_error "not_on_branch" "Not in a valid git branch."
 fi
 
-TYPE=$(echo "$CURRENT" | cut -d/ -f1)
-NAME=$(echo "$CURRENT" | cut -d/ -f2-)
-
-# Extract issue numbers (e.g. feature/44-45_dark → 44 45 ; feature/123_x → 123)
-ISSUE_NUMS=()
-if [[ "$NAME" =~ ^([0-9]+([-_][0-9]+)*)_ ]]; then
-  IFS='-_' read -ra ISSUE_NUMS <<< "${BASH_REMATCH[1]}"
-fi
-
 # Determine main branch (main or master)
 if git show-ref --verify --quiet refs/heads/main; then
   MAIN_BRANCH="main"
@@ -65,6 +56,23 @@ elif git show-ref --verify --quiet refs/heads/master; then
   MAIN_BRANCH="master"
 else
   emit_error "no_main_branch" "Neither 'main' nor 'master' branch found."
+fi
+
+# Refuse to run on a protected branch (main/master/develop). This is not a flow
+# branch, and re-deriving TYPE/NAME from it silently misroutes the merge,
+# tag, and cleanup steps (see issue #10). If a release/hotfix merge conflict
+# left you here, finish it manually instead of re-running 'git finish'.
+if [ "$CURRENT" = "$MAIN_BRANCH" ] || [ "$CURRENT" = "develop" ]; then
+  emit_error "on_protected_branch" "Refusing to run 'git finish' on '$CURRENT' (not a flow branch). If you just resolved a release/hotfix merge conflict here: 1) finish the merge with 'git commit' if one is still in progress; 2) tag and push manually: git tag -a <version> -m <message> && git push origin $CURRENT --tags. Otherwise checkout your release/hotfix/feature branch before re-running 'git finish'."
+fi
+
+TYPE=$(echo "$CURRENT" | cut -d/ -f1)
+NAME=$(echo "$CURRENT" | cut -d/ -f2-)
+
+# Extract issue numbers (e.g. feature/44-45_dark → 44 45 ; feature/123_x → 123)
+ISSUE_NUMS=()
+if [[ "$NAME" =~ ^([0-9]+([-_][0-9]+)*)_ ]]; then
+  IFS='-_' read -ra ISSUE_NUMS <<< "${BASH_REMATCH[1]}"
 fi
 
 # Determine merge base and targets
@@ -252,7 +260,15 @@ if [[ "$PUSH_CHOICE" =~ ^[Yy]$ ]]; then
 fi
 
 # ─── Cleanup ─────────────────────────────────────────────────────
-if [ "$AUTO_YES" = true ]; then
+# Hard invariant: main/master/develop are never candidates for automatic
+# deletion, no matter how TYPE/TARGETS were computed above (defense in depth
+# alongside the protected-branch refusal earlier — see issue #10).
+if [ "$CURRENT" = "$MAIN_BRANCH" ] || [ "$CURRENT" = "develop" ]; then
+  DEL_CHOICE="n"
+  if [ "$JSON" = false ]; then
+    printf "\n🛡️  '%s' is a protected branch — skipping deletion.\n" "$CURRENT"
+  fi
+elif [ "$AUTO_YES" = true ]; then
   DEL_CHOICE="y"
 else
   printf "\n🗑️  Delete branch '%s'? [Y/n] (default: y) → " "$CURRENT"

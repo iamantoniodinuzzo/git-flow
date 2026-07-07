@@ -53,12 +53,14 @@ Exits immediately if nothing is staged, preventing an empty commit.
 ```bash
 NAME=$(echo "$CURRENT" | cut -d/ -f2-)
 
-# Extract issue number (e.g. feature/123_dark_mode → 123)
-if [[ "$NAME" =~ ^([0-9]+)_ ]]; then
-  ISSUE_NUM="${BASH_REMATCH[1]}"
+# Extract issue number(s) (e.g. feature/123_dark_mode → 123 ; feature/44-45_dark → 44 45)
+if [[ "$NAME" =~ ^([0-9]+([-_][0-9]+)*)_ ]]; then
+  ISSUE_NUMS=("${BASH_REMATCH[1]}")
 fi
 ```
-Splits the branch name on `/`, takes the second part (e.g. `123_dark_mode`), then extracts the leading digits only if followed by an underscore.
+Splits the branch name on `/`, takes the second part (e.g. `123_dark_mode`), then extracts the leading digit group(s) only if followed by an underscore. Branch names like `feature/44-45_description` reference multiple issues — both get a `ref #N` (at commit time) and `Close #N` (at finish time).
+
+`git start feature`/`bugfix` warns on stderr (non-fatal) if this `<issue#>_` prefix is missing from the branch name — the branch is still created, but auto issue-ref detection won't fire for it. Pass `--no-issue` to `git start` to silence the warning for branches that intentionally have no linked issue.
 
 **3. Editor detection**
 ```bash
@@ -91,6 +93,18 @@ Accept? [Y/n/e(dit)] (default: y) →
 ```
 `Y`/Enter commits as-is. `e` re-opens the editor. `n` cancels.
 
+**7. Non-interactive mode (`-m`) — for AI agents / CI**
+
+```bash
+git c -m "<subject>" [--body "<text>"] [--json]
+```
+
+Skips the editor entirely. Still validates staged files first, still auto-appends `(ref #N)` from the branch name, and still warns (non-fatally) if the subject doesn't look like Conventional Commits. `--body` adds a blank-line-separated body. `--json` requires `-m` (there's no editor to fall back to) and emits:
+
+```json
+{"status":"ok","branch":"feature/42_auth_login","sha":"abc123","message":"feat(auth): add login retry (ref #42)"}
+```
+
 ---
 
 ## `git-finish-script.sh` — Branch merge & close
@@ -100,17 +114,25 @@ Accept? [Y/n/e(dit)] (default: y) →
 
 ### Step by step
 
-**1. Clean check**
+**1. Protected-branch check**
+```bash
+if [ "$CURRENT" = "$MAIN_BRANCH" ] || [ "$CURRENT" = "develop" ]; then
+  # Exits with "on_protected_branch" — never merges, tags, or deletes
+fi
+```
+`git finish` refuses to run while checked out on `main`/`master`/`develop`. These aren't flow branches, so re-deriving the branch type/name from them would misroute the merge, tag, and cleanup steps. If a release/hotfix merge conflict left you on one of these branches, finish the merge manually (`git commit`, then `git tag` + `git push` yourself) instead of re-running `git finish` there.
+
+**2. Clean check**
 ```bash
 if ! git diff-index --quiet HEAD --; then
   # Exits if there are uncommitted changes
 fi
 ```
 
-**2. Branch parsing**
+**3. Branch parsing**
 Identifies the branch type (`feature`, `bugfix`, `release`, `hotfix`, `support`) to determine the merge strategy.
 
-**3. Merge target resolution**
+**4. Merge target resolution**
 
 | Branch type | Base | Targets |
 |---|---|---|
@@ -120,7 +142,7 @@ Identifies the branch type (`feature`, `bugfix`, `release`, `hotfix`, `support`)
 | `hotfix` | `main`/`master` | `main`/`master` + `develop` |
 | `support` | `main`/`master` | `main`/`master` |
 
-**4. Message generation**
+**5. Message generation**
 
 The merge message is auto-generated from branch metadata and commit history:
 
@@ -137,7 +159,7 @@ SUBJECT="${MSG_TYPE}: merge ${CURRENT} into ${TARGETS[*]}"
 BODY=$(echo "$COMMITS" | sed 's/^/- /')
 ```
 
-**5. Issue reference**
+**6. Issue reference**
 
 At merge time the issue is closed by appending `Close #N` in the commit body:
 ```text
@@ -149,14 +171,14 @@ feat: merge feature/123_dark_mode into develop
 Close #123
 ```
 
-**6. Merge loop & error handling**
+**7. Merge loop & error handling**
 The script iterates through the targets, performing a `--no-ff` merge. If a conflict is detected, it stops and prompts the user for manual resolution.
 
-**7. Auto-tag for release and hotfix**
+**8. Auto-tag for release and hotfix**
 Creates an annotated tag using the branch name (e.g., `v1.2.0`). If the tag already exists, the script exits with an error to prevent accidental overwrites.
 
-**8. Branch cleanup**
-Deletes the local branch after successful merges.
+**9. Branch cleanup**
+Deletes the local branch after successful merges. `main`/`master`/`develop` are never deletion candidates, regardless of computed branch type — enforced a second time here as defense in depth alongside the step-1 protected-branch refusal.
 
 ---
 
@@ -165,8 +187,8 @@ Deletes the local branch after successful merges.
 | Alias | Script / Command | Description |
 |---|---|---|
 | `git init-flow` | inline shell function | Creates `develop` branch from `main`/`master` and pushes to origin |
-| `git start <type> <name> [--json]` | `git-start-script.sh` | Creates branch from correct base after pulling latest |
-| `git c` | `git-commit-script.sh` | Interactive CC commit with editor template |
+| `git start <type> <name> [--json] [--no-issue]` | `git-start-script.sh` | Creates branch from correct base after pulling latest |
+| `git c [-m <subject>] [--body <text>] [--json]` | `git-commit-script.sh` | Interactive CC commit with editor template, or non-interactive with `-m` |
 | `git finish [--yes\|--json]` | `git-finish-script.sh` | Auto-generated merge message + close issue + optional tag |
 | `git publish [--json]` | `git-publish-script.sh` | Push current branch to origin |
 | `git st-flow` | inline grep | List all active flow branches |
@@ -174,13 +196,16 @@ Deletes the local branch after successful merges.
 
 ### JSON output mode (`--json`)
 
-All scriptable commands (`git start`, `git finish`, `git publish`) accept `--json` to emit a single JSON object on stdout. Human-readable text is suppressed. Exit codes remain meaningful.
+All scriptable commands (`git start`, `git c`, `git finish`, `git publish`) accept `--json` to emit a single JSON object on stdout. Human-readable text is suppressed. Exit codes remain meaningful. For `git c`, `--json` requires `-m` (there's no editor to fall back to in JSON mode).
 
 **Success shapes:**
 
 ```json
 // git start feature 42_foo --json
 {"status":"ok","branch":"feature/42_foo","base":"develop"}
+
+// git c -m "feat(auth): add login retry" --json
+{"status":"ok","branch":"feature/42_foo","sha":"abc123","message":"feat(auth): add login retry (ref #42)"}
 
 // git publish --json
 {"status":"ok","branch":"feature/42_foo","remote":"origin"}
@@ -195,7 +220,7 @@ All scriptable commands (`git start`, `git finish`, `git publish`) accept `--jso
 {"status":"error","code":"dirty_working_tree","message":"Clean your working directory before merging. Commit or stash changes."}
 ```
 
-Known error codes: `dirty_working_tree`, `not_on_branch`, `no_main_branch`, `develop_missing`, `no_commits`, `merge_conflict`, `tag_failed`, `checkout_failed`, `push_failed`, `detached_head`, `usage`, `unknown_flag`.
+Known error codes: `dirty_working_tree`, `not_on_branch`, `no_main_branch`, `develop_missing`, `no_commits`, `merge_conflict`, `tag_failed`, `checkout_failed`, `push_failed`, `detached_head`, `usage`, `unknown_flag`, `on_protected_branch`, `nothing_staged`, `json_requires_message`, `empty_message`.
 
 `--json` implies `--yes` for `git finish` (interactive prompts would interleave with the JSON stream).
 
