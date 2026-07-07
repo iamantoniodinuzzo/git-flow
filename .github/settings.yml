@@ -1,6 +1,6 @@
 repository:
   description: "git-ai-flow: Streamline Git workflows with Conventional Commits automation and GitFlow. Lightweight Bash toolkit for smart, fast, and consistent development cycles."
-  homepage: https://github.com/iamantoniodinuzzo/git-ai-flow
+  homepage: https://github.com/iamantoniodinuzzo/git-flow
   topics:
     - git
     - gitflow
