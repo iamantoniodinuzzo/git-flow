@@ -187,8 +187,19 @@ Save and close the editor. The tool then shows a preview and asks for confirmati
 **Error — no staged files:**
 ```
 $ git c
-⚠️  No files in staging. Run first: git add <files>
+❌ No files in staging. Run first: git add <files>
 ```
+
+**Non-interactive mode (`-m`) — for AI agents / CI:**
+
+```
+$ git c -m "feat(ui): add dark mode toggle" --json
+{"status":"ok","branch":"feature/123_dark_mode","sha":"a1b2c3d","message":"feat(ui): add dark mode toggle (ref #123)"}
+```
+
+- Skips the editor entirely; still validates staged files exist and auto-appends `(ref #N)`.
+- `--body "<text>"` adds a blank-line-separated body.
+- `--json` requires `-m` (there's no editor to fall back to in JSON mode).
 
 ### Finish and Merge
 
@@ -251,11 +262,14 @@ $ git finish
 
 **JSON output (`--json`):**
 
-Pass `--json` to any command to get machine-readable output on stdout. Human-readable text is suppressed. `--json` implies `--yes` for `git finish` (interactive prompts would corrupt the JSON stream).
+Pass `--json` to any command to get machine-readable output on stdout. Human-readable text is suppressed. `--json` implies `--yes` for `git finish` (interactive prompts would corrupt the JSON stream). For `git c`, `--json` requires `-m` (no editor in JSON mode).
 
 ```
 $ git start feature 42_foo --json
 {"status":"ok","branch":"feature/42_foo","base":"develop"}
+
+$ git c -m "feat(auth): add login retry" --json
+{"status":"ok","branch":"feature/42_foo","sha":"abc123","message":"feat(auth): add login retry (ref #42)"}
 
 $ git publish --json
 {"status":"ok","branch":"feature/42_foo","remote":"origin"}
@@ -340,9 +354,10 @@ Close #456
 | Command | Description |
 |---|---|
 | `git init-flow` | Creates `develop` from `main` or `master` and pushes to origin |
-| `git start <type> <name>` | Creates `type/name` from the correct base branch (`develop` or `main`/`master`) |
+| `git start <type> <name>` | Creates `type/name` from the correct base branch (`develop` or `main`/`master`); warns if `feature`/`bugfix` name has no `<issue#>_` prefix |
 | `git c` | Interactive commit with Conventional Commits template |
-| `git finish` | Merges the current branch, tags if release/hotfix, cleans up (interactive) |
+| `git c -m "<subject>" [--body "<text>"] [--json]` | Non-interactive commit, auto issue-ref, machine-readable output |
+| `git finish` | Merges the current branch, tags if release/hotfix, cleans up (interactive); refuses on `main`/`master`/`develop` |
 | `git finish --yes` | Same as above but skips all prompts (non-interactive mode) |
 | `git finish --json` | Non-interactive, outputs structured JSON result to stdout |
 | `git publish` | Pushes the current branch to origin |

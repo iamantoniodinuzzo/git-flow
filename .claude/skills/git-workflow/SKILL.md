@@ -53,9 +53,11 @@ git start bugfix 44-45_fix_login  # → close both #44 and #45 on finish
 
 ---
 
-## `git c` — interactive commit
+## `git c` — commit
 
-Runs `~/.git-scripts/git-commit.sh`. Behavior:
+Runs `~/.git-scripts/git-commit.sh`. Two modes:
+
+**Interactive (default, no `-m`):**
 
 1. Validates staged files exist (aborts if nothing staged)
 2. Auto-detects issue number(s) from branch name (`feature/42_name` → `#42`)
@@ -63,6 +65,22 @@ Runs `~/.git-scripts/git-commit.sh`. Behavior:
 4. Strips `#` comment lines, validates non-empty, warns if not CC format
 5. Shows preview, prompts: accept (`Y`) / re-edit (`e`) / cancel (`n`)
 6. On accept: appends `(ref #<issue>)` to subject, runs `git commit`
+
+**Non-interactive (`-m`) — for AI agents / CI:**
+
+```bash
+git c -m "<subject>" [--body "<text>"] [--json]
+```
+
+- Skips the editor entirely; validates staged files exist first.
+- Auto-appends `(ref #N)` to the subject, same as interactive mode.
+- Warns (non-fatal) if the subject doesn't look like Conventional Commits.
+- `--body` adds a blank-line-separated body to the commit message.
+- `--json` requires `-m` (there's no editor to fall back to) and emits:
+  ```bash
+  git c -m "feat(auth): add login retry" --json
+  # {"status":"ok","branch":"feature/42_auth_login","sha":"abc123","message":"feat(auth): add login retry (ref #42)"}
+  ```
 
 **Always stage files before running `git c`.**
 
@@ -101,10 +119,11 @@ merges, tags, or deletes that branch.
 
 ## `--json` flag — AI agent / CI mode
 
-All three script-backed commands (`git start`, `git publish`, `git finish`) support `--json`.
+All four script-backed commands (`git start`, `git c`, `git publish`, `git finish`) support `--json`.
 
 - Human-readable output is suppressed; only one JSON line goes to stdout.
 - `--json` implies `--yes` for `git finish` (interactive prompts would corrupt the JSON stream).
+- `--json` requires `-m` for `git c` (no editor in JSON mode).
 - Exit codes are always meaningful: `0` success, non-zero error — regardless of `--json`.
 
 **Success payloads:**
@@ -112,6 +131,9 @@ All three script-backed commands (`git start`, `git publish`, `git finish`) supp
 ```bash
 git start feature 42_foo --json
 # {"status":"ok","branch":"feature/42_foo","base":"develop"}
+
+git c -m "feat(auth): add login retry" --json
+# {"status":"ok","branch":"feature/42_foo","sha":"abc123","message":"feat(auth): add login retry (ref #42)"}
 
 git publish --json
 # {"status":"ok","branch":"feature/42_foo","remote":"origin"}
@@ -136,12 +158,12 @@ git finish --json
 ## Typical feature lifecycle
 
 ```bash
-git start feature 42_auth_login   # branch from develop
+git start feature 42_auth_login --json      # branch from develop
 # [write code]
-git add <files>                    # stage changes
-git c                              # Conventional Commit (auto issue ref)
-git finish --json                  # merge into develop, push, delete — JSON out
-gh issue close 42                  # GitHub does NOT auto-close on merge
+git add <files>                              # stage changes
+git c -m "feat(auth): add login retry" --json  # Conventional Commit (auto issue ref), non-interactive
+git finish --json                            # merge into develop, push, delete — JSON out
+gh issue close 42                            # GitHub does NOT auto-close on merge
 ```
 
 ---
