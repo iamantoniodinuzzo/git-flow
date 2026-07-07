@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2026-07-07
+
+### Added
+- `-m`/`--body`/`--json` non-interactive mode for `git c`, for AI-agent and CI use.
+- `git start` warns (stderr, non-fatal) when a `feature`/`bugfix` branch name is missing its `<issue#>_` prefix; `--no-issue` silences the warning.
+- `git finish` refuses to run on `main`/`master`/`develop` (`on_protected_branch`), preventing accidental merge/tag/deletion of protected branches.
+
 ## [0.6.0] - 2026-06-21
 
 ### Added
