@@ -77,7 +77,7 @@ git finish
 ### Utility Aliases (from `gitconfig-aliases.ini`)
 
 - `git init-flow` — creates `develop` from `main`/`master` and pushes to origin
-- `git start <type> <name> [--json]` — creates `type/name` branch from the correct base (`develop` or `main`/`master`)
+- `git start <type> <name> [--json] [--no-issue]` — creates `type/name` branch from the correct base (`develop` or `main`/`master`); for `feature`/`bugfix`, warns on stderr (non-fatal) if `<issue#>_` prefix is missing
 - `git publish [--json]` — pushes the current branch to origin
 - `git sync` — checks out `develop` and pulls
 - `git st-flow` — lists all active GitFlow branches (`feature/`, `bugfix/`, etc.)

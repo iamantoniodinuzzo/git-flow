@@ -138,6 +138,12 @@ Branch naming convention: `<type>/<issue_number>_<description>`
 
 Supported types: `feature`, `bugfix`, `release`, `hotfix`, `support`
 
+For `feature`/`bugfix`, `git start` warns (non-fatal, printed to stderr) if the
+`<issue_number>_` prefix is missing — the branch is still created, but auto
+issue-ref detection in `git c`/`git finish` won't fire. Pass `--no-issue` to
+silence the warning. `release`/`hotfix`/`support` use version-style names and
+are never checked.
+
 ### Commit
 
 ```
