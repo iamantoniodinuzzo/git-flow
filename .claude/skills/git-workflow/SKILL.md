@@ -163,7 +163,7 @@ git start feature 42_auth_login --json      # branch from develop
 git add <files>                              # stage changes
 git c -m "feat(auth): add login retry" --json  # Conventional Commit (auto issue ref), non-interactive
 git finish --json                            # merge into develop, push, delete — JSON out
-gh issue close 42                            # GitHub does NOT auto-close on merge
+gh issue close 42                            # only needed when the default branch is not the merge target (see Gotchas)
 ```
 
 ---
@@ -195,7 +195,7 @@ git finish --json
 
 ## Gotchas
 
-- **GitHub does NOT auto-close issues on merge** — always run `gh issue close <n>` after merging.
+- **Issue auto-close depends on the repo's default branch.** `git finish` appends `Close #N` to the merge message; GitHub closes the issue a few seconds after that merge lands on the **default branch**. Check it with `gh repo view --json defaultBranchRef`. Default `develop`: nothing to do, confirm with `gh issue view <n>`. Default `main`: feature and bugfix issues stay open until the release or hotfix merge, so run `gh issue close <n>` after `git finish`.
 - **`git finish` requires clean working directory** — commit or stash everything first.
 - **`git finish` refuses to run on `main`/`master`/`develop`** — never merges, tags, or deletes those branches; recover manually if you end up there. A `merge_conflict` error means the merge was aborted and the target is unchanged: merge the target into your branch, resolve, commit, and rerun `git finish`.
 - **`git start` requires `develop` to exist** (except `hotfix`/`support`) — run `git init-flow` first on a fresh repo.

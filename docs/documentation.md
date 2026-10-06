@@ -161,7 +161,7 @@ BODY=$(echo "$COMMITS" | sed 's/^/- /')
 
 **6. Issue reference**
 
-At merge time the issue is closed by appending `Close #N` in the commit body:
+At merge time `Close #N` is appended to the commit body. GitHub closes the issue (a few seconds later) only when that merge lands on the repository's **default branch**; if the default is `main`, feature/bugfix issues stay open until a release or hotfix reaches `main`, so close them manually with `gh issue close`:
 ```text
 feat: merge feature/123_dark_mode into develop
 
