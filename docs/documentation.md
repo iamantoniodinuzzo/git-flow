@@ -120,7 +120,7 @@ if [ "$CURRENT" = "$MAIN_BRANCH" ] || [ "$CURRENT" = "develop" ]; then
   # Exits with "on_protected_branch" — never merges, tags, or deletes
 fi
 ```
-`git finish` refuses to run while checked out on `main`/`master`/`develop`. These aren't flow branches, so re-deriving the branch type/name from them would misroute the merge, tag, and cleanup steps. If a release/hotfix merge conflict left you on one of these branches, finish the merge manually (`git commit`, then `git tag` + `git push` yourself) instead of re-running `git finish` there.
+`git finish` refuses to run while checked out on `main`/`master`/`develop`. These aren't flow branches, so re-deriving the branch type/name from them would misroute the merge, tag, and cleanup steps. If you end up on one of these branches (e.g. after a manual merge), finish the merge manually (`git commit`, then `git tag` + `git push` yourself) instead of re-running `git finish` there.
 
 **2. Clean check**
 ```bash
@@ -172,7 +172,7 @@ Close #123
 ```
 
 **7. Merge loop & error handling**
-The script iterates through the targets, performing a `--no-ff` merge. If a conflict is detected, it stops and prompts the user for manual resolution.
+The script iterates through the targets, performing a `--no-ff` merge. If a conflict is detected, the merge is aborted, the flow branch is checked out again, and `merge_conflict` is emitted; the target is left unchanged. Resolve by merging the target into your flow branch, then run `git finish` again.
 
 **8. Auto-tag for release and hotfix**
 Creates an annotated tag using the branch name (e.g., `v1.2.0`). If the tag already exists, the script exits with an error to prevent accidental overwrites.
