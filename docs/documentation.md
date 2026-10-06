@@ -2,14 +2,14 @@
 
 ## Overview
 
-`git-ai-flow` is a set of Git aliases and Bash scripts that wrap common GitFlow operations and provide Conventional Commits automation with interactive commit workflows. The goal is to reduce friction in the commit and merge workflow while enforcing consistent message formatting through [Conventional Commits](https://www.conventionalcommits.org/).
+`git-flow` is a set of Git aliases and Bash scripts that wrap common GitFlow operations and provide Conventional Commits automation with interactive commit workflows. The goal is to reduce friction in the commit and merge workflow while enforcing consistent message formatting through [Conventional Commits](https://www.conventionalcommits.org/).
 
 ---
 
 ## Repository structure
 
 ```text
-git-ai-flow/
+git-flow/
 ├── scripts/
 │   ├── git-commit-script.sh    # Interactive commit with CC template
 │   ├── git-finish-script.sh    # Auto-generated merge message + branch close
@@ -120,7 +120,7 @@ if [ "$CURRENT" = "$MAIN_BRANCH" ] || [ "$CURRENT" = "develop" ]; then
   # Exits with "on_protected_branch" — never merges, tags, or deletes
 fi
 ```
-`git finish` refuses to run while checked out on `main`/`master`/`develop`. These aren't flow branches, so re-deriving the branch type/name from them would misroute the merge, tag, and cleanup steps. If a release/hotfix merge conflict left you on one of these branches, finish the merge manually (`git commit`, then `git tag` + `git push` yourself) instead of re-running `git finish` there.
+`git finish` refuses to run while checked out on `main`/`master`/`develop`. These aren't flow branches, so re-deriving the branch type/name from them would misroute the merge, tag, and cleanup steps. If you end up on one of these branches (e.g. after a manual merge), finish the merge manually (`git commit`, then `git tag` + `git push` yourself) instead of re-running `git finish` there.
 
 **2. Clean check**
 ```bash
@@ -161,7 +161,7 @@ BODY=$(echo "$COMMITS" | sed 's/^/- /')
 
 **6. Issue reference**
 
-At merge time the issue is closed by appending `Close #N` in the commit body:
+At merge time `Close #N` is appended to the commit body. GitHub closes the issue (a few seconds later) only when that merge lands on the repository's **default branch**; if the default is `main`, feature/bugfix issues stay open until a release or hotfix reaches `main`, so close them manually with `gh issue close`:
 ```text
 feat: merge feature/123_dark_mode into develop
 
@@ -172,7 +172,7 @@ Close #123
 ```
 
 **7. Merge loop & error handling**
-The script iterates through the targets, performing a `--no-ff` merge. If a conflict is detected, it stops and prompts the user for manual resolution.
+The script iterates through the targets, performing a `--no-ff` merge. If a conflict is detected, the merge is aborted, the flow branch is checked out again, and `merge_conflict` is emitted; the target is left unchanged. Resolve by merging the target into your flow branch, then run `git finish` again.
 
 **8. Auto-tag for release and hotfix**
 Creates an annotated tag using the branch name (e.g., `v1.2.0`). If the tag already exists, the script exits with an error to prevent accidental overwrites.

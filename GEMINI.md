@@ -1,10 +1,10 @@
-# git-ai-flow
+# git-flow
 
 A lightweight GitFlow toolkit with Conventional Commits automation and interactive commit workflows, implemented as Bash scripts and Git aliases.
 
 ## Project Overview
 
-**git-ai-flow** simplifies the GitFlow workflow by providing automated tools for branch creation, committing, and merging. It ensures consistency by enforcing Conventional Commits and automatically linking issue numbers from branch names.
+**git-flow** simplifies the GitFlow workflow by providing automated tools for branch creation, committing, and merging. It ensures consistency by enforcing Conventional Commits and automatically linking issue numbers from branch names.
 
 - **Main Technologies:** Bash (4.0+), Git (2.20+), ShellCheck.
 - **Key Features:** Interactive commit templates, automated merge messages, automatic CHANGELOG updates for releases, and streamlined branch lifecycle management.
