@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.1]
+
+### Fixed
+- `git finish` now aborts the merge and returns to the flow branch on a merge conflict, leaving the target (`develop`/`main`) untouched; `merge_conflict` reports any targets already merged locally.
+
+### Changed
+- Docs and skill clarify that `Close #N` only auto-closes an issue when the merge lands on the repository's default branch.
+
 ## [0.7.0] - 2026-07-07
 
 ### Added
