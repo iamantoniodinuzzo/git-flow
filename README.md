@@ -258,7 +258,7 @@ $ git finish
 $ git finish
 ❌ Refusing to run 'git finish' on 'main' (not a flow branch). If you just resolved a release/hotfix merge conflict here: 1) finish the merge with 'git commit' if one is still in progress; 2) tag and push manually: git tag -a <version> -m <message> && git push origin main --tags. Otherwise checkout your release/hotfix/feature branch before re-running 'git finish'.
 ```
-`git finish` never merges, tags, or deletes `main`/`master`/`develop` — if a merge conflict left you checked out on one of them, finish it manually.
+`git finish` never merges, tags, or deletes `main`/`master`/`develop` — if you end up checked out on one of them, finish manually. On a merge conflict, `git finish` aborts the merge and returns you to your flow branch, leaving the target untouched.
 
 **JSON output (`--json`):**
 

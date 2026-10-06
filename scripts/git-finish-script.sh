@@ -202,20 +202,39 @@ fi
 
 # ─── Execute Merge ───────────────────────────────────────────────
 if [ "$JSON" = false ]; then printf "\n"; fi
+MERGED=()
 for TARGET in "${TARGETS[@]}"; do
   if [ "$JSON" = true ]; then
     git checkout "$TARGET" >/dev/null 2>&1 \
       || emit_error "checkout_failed" "Could not checkout $TARGET"
-    git merge --no-ff "$CURRENT" -m "$FULL_MSG" >/dev/null 2>&1 \
-      || emit_error "merge_conflict" "Merge conflict in $TARGET. Resolve manually and run 'git finish' again."
   else
     if ! git checkout "$TARGET"; then
       emit_error "checkout_failed" "Could not checkout $TARGET"
     fi
-    if ! git merge --no-ff "$CURRENT" -m "$FULL_MSG"; then
-      emit_error "merge_conflict" "Merge conflict detected in $TARGET. Resolve manually and then run 'git finish' again."
-    fi
   fi
+
+  if [ "$JSON" = true ]; then
+    MERGE_OK=true
+    git merge --no-ff "$CURRENT" -m "$FULL_MSG" >/dev/null 2>&1 || MERGE_OK=false
+  else
+    MERGE_OK=true
+    git merge --no-ff "$CURRENT" -m "$FULL_MSG" || MERGE_OK=false
+  fi
+
+  if [ "$MERGE_OK" = false ]; then
+    # Leave the target untouched: abort the half-done merge and go back to the flow branch.
+    if git rev-parse -q --verify MERGE_HEAD >/dev/null 2>&1; then
+      git merge --abort >/dev/null 2>&1 || true
+    fi
+    git checkout "$CURRENT" >/dev/null 2>&1 || true
+    CONFLICT_MSG="Merge into $TARGET aborted due to conflicts; $TARGET is unchanged. Resolve on your branch (git merge $TARGET, fix conflicts, commit), then run 'git finish' again."
+    if [ "${#MERGED[@]}" -gt 0 ]; then
+      CONFLICT_MSG+=" Already merged locally (not pushed): ${MERGED[*]}."
+    fi
+    emit_error "merge_conflict" "$CONFLICT_MSG"
+  fi
+
+  MERGED+=("$TARGET")
   if [ "$JSON" = false ]; then
     printf "✅ Merged into %s\n" "$TARGET"
   fi
