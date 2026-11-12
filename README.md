@@ -355,11 +355,13 @@ Close #456
 |---|---|
 | `git init-flow` | Creates `develop` from `main` or `master` and pushes to origin |
 | `git start <type> <name>` | Creates `type/name` from the correct base branch (`develop` or `main`/`master`); warns if `feature`/`bugfix` name has no `<issue#>_` prefix |
+| `git start <type> <name> --worktree [<path>]` | Same, but creates the branch in a new linked worktree (default `../<repo-dir>_wt_<name>`) so several issues can be worked on in parallel; the main checkout is untouched |
 | `git c` | Interactive commit with Conventional Commits template |
 | `git c -m "<subject>" [--body "<text>"] [--json]` | Non-interactive commit, auto issue-ref, machine-readable output |
 | `git finish` | Merges the current branch, tags if release/hotfix, cleans up (interactive); refuses on `main`/`master`/`develop` |
 | `git finish --yes` | Same as above but skips all prompts (non-interactive mode) |
 | `git finish --json` | Non-interactive, outputs structured JSON result to stdout |
+| `git finish --keep-worktree` | When run in a linked worktree, merge but keep the worktree and branch (by default the worktree is removed) |
 | `git publish` | Pushes the current branch to origin |
 | `git publish --json` | Push, outputs structured JSON result to stdout |
 | `git start <type> <name> --json` | Branch creation, outputs structured JSON result to stdout |

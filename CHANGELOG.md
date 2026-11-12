@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- `git start <type> <name> --worktree [<path>]` creates the branch in a new linked worktree (default `../<repo-dir>_wt_<name>`) cut from `origin/<base>`, leaving the main checkout untouched; `--json` adds `worktree`. New error codes `worktree_path_exists`, `worktree_add_failed`, `fetch_failed`.
+- `git start` without `--worktree` inside a linked worktree fails with `in_linked_worktree` instead of a bare `checkout_failed`.
+- `git finish` run inside a linked worktree merges where each target is checked out, removes the worktree and deletes the branch (`worktree_removed` in `--json`); `--keep-worktree` opts out. New error code `target_worktree_dirty`.
+- Skill and docs: "Parallel work with worktrees" section.
+
 ## [0.7.1] - 2026-10-06
 
 ### Fixed

@@ -12,9 +12,9 @@ user-invocable: true
 | Alias | Syntax | Backed by |
 |---|---|---|
 | `init-flow` | `git init-flow` | Inline alias — create `develop` from `main`/`master`, push to origin |
-| `start` | `git start <type> <name> [--json] [--no-issue]` | `~/.git-scripts/git-start.sh` |
+| `start` | `git start <type> <name> [--json] [--no-issue] [--worktree [<path>]]` | `~/.git-scripts/git-start.sh` |
 | `c` | `git c [-m <subject>] [--body <text>] [--json]` | `~/.git-scripts/git-commit.sh` — interactive Conventional Commit |
-| `finish` | `git finish [--yes\|-y] [--json]` | `~/.git-scripts/git-finish.sh` — merge, tag, CHANGELOG |
+| `finish` | `git finish [--yes\|-y] [--json] [--keep-worktree]` | `~/.git-scripts/git-finish.sh` — merge, tag, CHANGELOG |
 | `publish` | `git publish [--json]` | `~/.git-scripts/git-publish.sh` — push current branch |
 | `st-flow` | `git st-flow` | Inline alias — list active flow branches |
 | `sync` | `git sync` | Inline alias — checkout develop + pull |
@@ -106,6 +106,7 @@ For `release/*` and `hotfix/*`: also updates `CHANGELOG.md` with current date an
 | _(none)_ | Interactive: prompts for merge message, push, branch deletion |
 | `--yes` / `-y` | Non-interactive: auto-accepts all prompts |
 | `--json` | Machine-readable JSON output; implies `--yes`; suppresses all human text |
+| `--keep-worktree` | Run from a linked worktree: merge, but keep the worktree (and therefore the branch) instead of removing it |
 
 **Requires clean working directory.** Stash or commit everything first.
 
@@ -138,11 +139,14 @@ git c -m "feat(auth): add login retry" --json
 git publish --json
 # {"status":"ok","branch":"feature/42_foo","remote":"origin"}
 
+git start feature 42_foo --worktree --json
+# {"status":"ok","branch":"feature/42_foo","base":"develop","worktree":"/abs/path/repo_wt_42_foo"}
+
 git finish --json
-# {"status":"ok","branch":"feature/42_foo","merged_into":["develop"],"tag":null,"pushed":true,"deleted":true}
+# {"status":"ok","branch":"feature/42_foo","merged_into":["develop"],"tag":null,"pushed":true,"deleted":true,"worktree_removed":false}
 
 # release/hotfix (tag included):
-# {"status":"ok","branch":"release/1.2.0","merged_into":["main","develop"],"tag":"1.2.0","pushed":true,"deleted":true}
+# {"status":"ok","branch":"release/1.2.0","merged_into":["main","develop"],"tag":"1.2.0","pushed":true,"deleted":true,"worktree_removed":false}
 ```
 
 **Error payload (any command):**
@@ -165,6 +169,37 @@ git c -m "feat(auth): add login retry" --json  # Conventional Commit (auto issue
 git finish --json                            # merge into develop, push, delete — JSON out
 gh issue close 42                            # only needed when the default branch is not the merge target (see Gotchas)
 ```
+
+---
+
+## Parallel work with worktrees
+
+To work on two issues at once (one agent or terminal each), give every issue its own linked worktree. One branch per issue, one worktree per branch — never share a worktree between issues.
+
+```bash
+# From the main checkout, once per issue:
+git start feature 42_auth_login --worktree --json   # → worktree at ../<repo>_wt_42_auth_login
+git start feature 43_dark_mode  --worktree --json   # → worktree at ../<repo>_wt_43_dark_mode
+# JSON payload carries "worktree":"<absolute path>" — cd there and work.
+
+# Inside each worktree, nothing special:
+git add <files>
+git c -m "feat(auth): add login retry" --json
+git publish --json                                  # optional
+
+# Still inside the worktree, when done:
+git finish --json   # merges into develop, pushes, removes the worktree, deletes the branch
+                    # → "worktree_removed":true
+```
+
+- The main checkout is never moved by `git start --worktree`: the branch is cut from `origin/develop` (local `develop` if there is no remote, or if local is ahead of origin).
+- Custom location: `git start feature 42_foo --worktree <path>` (or `--worktree=<path>`).
+- `git finish` merges in whichever worktree has the target checked out (usually the main checkout, which must then be clean → else `target_worktree_dirty`). If no worktree has it, it checks the target out in the current one. Finish worktrees one after the other: the second merge sees the first.
+- `git finish` from a linked worktree refuses on untracked files too (`dirty_working_tree`), since they would block removing the worktree. `--keep-worktree` merges but keeps the worktree and branch.
+- `git start` without `--worktree` inside a linked worktree fails with `in_linked_worktree` — add `--worktree` or run it from the main checkout.
+- `git c` and `git publish` work unchanged in any worktree. `git sync` is for the main checkout.
+- Per-worktree tooling state (dependency install, build output) is the project's job, not this toolchain's.
+- Epics/parent issues get no branch: create worktrees for their sub-issues, one each.
 
 ---
 
@@ -200,5 +235,6 @@ git finish --json
 - **`git finish` refuses to run on `main`/`master`/`develop`** — never merges, tags, or deletes those branches; recover manually if you end up there. A `merge_conflict` error means the merge was aborted and the target is unchanged: merge the target into your branch, resolve, commit, and rerun `git finish`.
 - **`git start` requires `develop` to exist** (except `hotfix`/`support`) — run `git init-flow` first on a fresh repo.
 - **`git start feature`/`bugfix` warns (stderr, non-fatal) if `<issue#>_` prefix is missing** — branch is still created, but auto issue-ref in `git c`/`git finish` won't fire. Use `--no-issue` to silence.
+- **Worktree error codes:** `in_linked_worktree` (`git start` without `--worktree` inside a linked worktree), `worktree_path_exists`, `worktree_add_failed`, `fetch_failed` (`git start --worktree`), `target_worktree_dirty` (`git finish`, merge target's worktree has uncommitted changes).
 - **File exists on disk ≠ tracked by git** — verify with `git ls-files <path>`, not a filesystem check.
 - **CHANGELOG header must exist without a date** before `git finish` on release/hotfix — the script adds the date automatically; if already dated, it skips the update.
