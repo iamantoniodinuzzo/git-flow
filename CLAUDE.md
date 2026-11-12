@@ -38,8 +38,8 @@ git finish
 ### Core Files
 
 - `scripts/git-commit-script.sh` — invoked by `git c` alias; opens the user's editor with a Conventional Commits template, validates the message, injects issue references, and commits; supports `-m`/`--body`/`--json` for non-interactive use
-- `scripts/git-finish-script.sh` — invoked by `git finish`; auto-generates a merge message from branch metadata and commit history, then merges, tags, and cleans up; supports `--yes`/`--json`
-- `scripts/git-start-script.sh` — invoked by `git start`; creates a typed branch from the correct base; supports `--json`
+- `scripts/git-finish-script.sh` — invoked by `git finish`; auto-generates a merge message from branch metadata and commit history, then merges, tags, and cleans up; supports `--yes`/`--json`/`--keep-worktree` (from a linked worktree it merges where each target is checked out and removes the worktree)
+- `scripts/git-start-script.sh` — invoked by `git start`; creates a typed branch from the correct base; supports `--json` and `--worktree [<path>]` (new linked worktree, main checkout untouched)
 - `scripts/git-publish-script.sh` — invoked by `git publish`; pushes current branch to origin; supports `--json`
 - `gitconfig-aliases.ini` — Git aliases installed to `~/.gitconfig`; defines `git start`, `git finish`, `git c`, `git publish`, `git sync`, `git st-flow`, `git init-flow`
 - `.claude/skills/git-workflow/SKILL.md` — Claude Code skill; AI-facing contract for all aliases. `install.sh` copies it to `~/.claude/skills/git-workflow/SKILL.md` so it is active globally in any repo using these aliases

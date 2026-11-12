@@ -41,6 +41,10 @@ Before opening a PR, please verify:
 - [ ] `git finish` on a feature branch merges into `develop` and deletes the branch.
 - [ ] `git finish` on a release/hotfix branch merges into BOTH `main`/`master` and `develop`.
 - [ ] Error handling: try running `git c` without staged files.
+- [ ] `git start feature 42_foo --worktree --json` creates `../<repo>_wt_42_foo`, the JSON has `worktree`, and the main checkout stays on its branch, clean.
+- [ ] `git start feature 43_bar` inside that worktree fails with `in_linked_worktree`; rerunning the first command fails with `worktree_path_exists`.
+- [ ] `git finish --json` inside the worktree merges into `develop`, removes the worktree, deletes the branch (`"worktree_removed":true`); an untracked file there makes it fail with `dirty_working_tree`; `--keep-worktree` keeps both.
+- [ ] Two worktrees finished one after the other leave `develop` with both merges (the second sees the first), also when `develop` is not checked out anywhere.
 
 ## Branching & PRs
 

@@ -31,17 +31,43 @@ json_array() {
 
 # ─── Flag parsing ────────────────────────────────────────────────
 AUTO_YES=false
+KEEP_WORKTREE=false
 for arg in "$@"; do
   case "$arg" in
-    --yes|-y) AUTO_YES=true ;;
-    --json)   JSON=true; AUTO_YES=true ;;
+    --yes|-y)        AUTO_YES=true ;;
+    --json)          JSON=true; AUTO_YES=true ;;
+    --keep-worktree) KEEP_WORKTREE=true ;;
     *) emit_error "unknown_flag" "Unknown flag: $arg" ;;
   esac
 done
 
+# ─── Worktree helpers ────────────────────────────────────────────
+abs_dir() { (cd "$1" && pwd -P); }
+
+# Path of the worktree where branch $1 is checked out (empty if none).
+worktree_of_branch() {
+  git worktree list --porcelain \
+    | awk -v ref="refs/heads/$1" '/^worktree /{wt=substr($0,10)} $0=="branch " ref {print wt; exit}'
+}
+
+IN_LINKED_WORKTREE=false
+if [ "$(abs_dir "$(git rev-parse --git-dir)")" != "$(abs_dir "$(git rev-parse --git-common-dir)")" ]; then
+  IN_LINKED_WORKTREE=true
+fi
+CUR_TOP=$(git rev-parse --show-toplevel)
+# The first entry of 'git worktree list' is always the main worktree.
+MAIN_WORKTREE=$(git worktree list --porcelain | sed -n '1s/^worktree //p')
+WT_REMOVED=false
+
 # ─── Verification of clean working directory ─────────────────────
 if ! git diff-index --quiet HEAD --; then
   emit_error "dirty_working_tree" "Clean your working directory before merging. Commit or stash changes."
+fi
+# A linked worktree is removed after the merge; 'git worktree remove' refuses on
+# untracked files, so catch them now instead of failing after the merge landed.
+if [ "$IN_LINKED_WORKTREE" = true ] && [ "$KEEP_WORKTREE" = false ] \
+   && [ -n "$(git status --porcelain)" ]; then
+  emit_error "dirty_working_tree" "Linked worktree has untracked files, which would block its removal. Commit, stash or delete them, or pass --keep-worktree."
 fi
 
 CURRENT=$(git symbolic-ref --short HEAD 2>/dev/null || echo "")
@@ -91,6 +117,15 @@ DELETED=false
 if [ "$TYPE" != "support" ] && ! git show-ref --verify --quiet refs/heads/develop; then
   emit_error "develop_missing" "'develop' branch does not exist. Run first: git init-flow"
 fi
+
+# A target checked out in another worktree is merged there (git refuses to check
+# a branch out twice); that worktree must be clean or the merge would be unsafe.
+for TARGET in "${TARGETS[@]}"; do
+  TWT=$(worktree_of_branch "$TARGET")
+  if [ -n "$TWT" ] && [ "$TWT" != "$CUR_TOP" ] && ! git -C "$TWT" diff-index --quiet HEAD --; then
+    emit_error "target_worktree_dirty" "$TARGET is checked out in $TWT, which has uncommitted changes. Commit or stash them there first."
+  fi
+done
 
 if [ "$JSON" = false ]; then
   printf "🔍 Branch: %s → merge into: %s\n" "$CURRENT" "${TARGETS[*]}"
@@ -203,30 +238,40 @@ fi
 # ─── Execute Merge ───────────────────────────────────────────────
 if [ "$JSON" = false ]; then printf "\n"; fi
 MERGED=()
+LAST_TARGET=""
 for TARGET in "${TARGETS[@]}"; do
-  if [ "$JSON" = true ]; then
-    git checkout "$TARGET" >/dev/null 2>&1 \
-      || emit_error "checkout_failed" "Could not checkout $TARGET"
+  # Run git in the worktree that holds the target; if none does, check it out here.
+  TWT=$(worktree_of_branch "$TARGET")
+  if [ -n "$TWT" ] && [ "$TWT" != "$CUR_TOP" ]; then
+    MERGE_DIR="$TWT"
   else
-    if ! git checkout "$TARGET"; then
-      emit_error "checkout_failed" "Could not checkout $TARGET"
+    MERGE_DIR="."
+    if [ "$JSON" = true ]; then
+      git checkout "$TARGET" >/dev/null 2>&1 \
+        || emit_error "checkout_failed" "Could not checkout $TARGET"
+    else
+      if ! git checkout "$TARGET"; then
+        emit_error "checkout_failed" "Could not checkout $TARGET"
+      fi
     fi
   fi
 
   if [ "$JSON" = true ]; then
     MERGE_OK=true
-    git merge --no-ff "$CURRENT" -m "$FULL_MSG" >/dev/null 2>&1 || MERGE_OK=false
+    git -C "$MERGE_DIR" merge --no-ff "$CURRENT" -m "$FULL_MSG" >/dev/null 2>&1 || MERGE_OK=false
   else
     MERGE_OK=true
-    git merge --no-ff "$CURRENT" -m "$FULL_MSG" || MERGE_OK=false
+    git -C "$MERGE_DIR" merge --no-ff "$CURRENT" -m "$FULL_MSG" || MERGE_OK=false
   fi
 
   if [ "$MERGE_OK" = false ]; then
     # Leave the target untouched: abort the half-done merge and go back to the flow branch.
-    if git rev-parse -q --verify MERGE_HEAD >/dev/null 2>&1; then
-      git merge --abort >/dev/null 2>&1 || true
+    if git -C "$MERGE_DIR" rev-parse -q --verify MERGE_HEAD >/dev/null 2>&1; then
+      git -C "$MERGE_DIR" merge --abort >/dev/null 2>&1 || true
     fi
-    git checkout "$CURRENT" >/dev/null 2>&1 || true
+    if [ "$MERGE_DIR" = "." ]; then
+      git checkout "$CURRENT" >/dev/null 2>&1 || true
+    fi
     CONFLICT_MSG="Merge into $TARGET aborted due to conflicts; $TARGET is unchanged. Resolve on your branch (git merge $TARGET, fix conflicts, commit), then run 'git finish' again."
     if [ "${#MERGED[@]}" -gt 0 ]; then
       CONFLICT_MSG+=" Already merged locally (not pushed): ${MERGED[*]}."
@@ -235,14 +280,16 @@ for TARGET in "${TARGETS[@]}"; do
   fi
 
   MERGED+=("$TARGET")
+  LAST_TARGET="$TARGET"
   if [ "$JSON" = false ]; then
     printf "✅ Merged into %s\n" "$TARGET"
   fi
 done
 
-# Automatic tag for release and hotfix
+# Automatic tag for release and hotfix (on the last target's tip; HEAD may not be
+# there when that target was merged in another worktree).
 if [ "$TYPE" = "release" ] || [ "$TYPE" = "hotfix" ]; then
-  if ! git tag -a "$NAME" -m "$FULL_MSG"; then
+  if ! git tag -a "$NAME" -m "$FULL_MSG" "$LAST_TARGET"; then
     emit_error "tag_failed" "Tag '$NAME' already exists or could not be created."
   fi
   if [ "$JSON" = false ]; then
@@ -295,8 +342,58 @@ else
   DEL_CHOICE=${DEL_CHOICE:-y}
 fi
 
+DEL_FLAG="-d"
+
+# Linked worktree: git refuses to delete a branch that is checked out in any
+# worktree, so remove this one first (never with --force: it must be clean).
+if [ "$IN_LINKED_WORKTREE" = true ] && [[ "$DEL_CHOICE" =~ ^[Yy]$ ]]; then
+  if [ "$KEEP_WORKTREE" = true ]; then
+    DEL_CHOICE="n"
+    if [ "$JSON" = false ]; then
+      printf "⚠️  Branch '%s' kept: it is checked out in the worktree you asked to keep.\n" "$CURRENT"
+    fi
+  else
+    cd "$MAIN_WORKTREE"
+    if git worktree remove "$CUR_TOP" >/dev/null 2>&1; then
+      WT_REMOVED=true
+    elif [ -z "$(worktree_of_branch "$CURRENT")" ]; then
+      # git unregistered the worktree but could not delete the directory
+      # (e.g. on Windows the calling shell's cwd holds it open).
+      WT_REMOVED=true
+      if [ "$JSON" = false ]; then
+        printf "⚠️  Worktree unregistered, but '%s' could not be deleted (is a shell still inside it?). Remove it manually.\n" "$CUR_TOP"
+      fi
+    else
+      DEL_CHOICE="n"
+      if [ "$JSON" = false ]; then
+        printf "⚠️  Could not remove worktree '%s'. Branch '%s' kept. Then run: git worktree remove \"%s\" && git branch -d %s\n" "$CUR_TOP" "$CURRENT" "$CUR_TOP" "$CURRENT"
+      fi
+    fi
+    if [ "$WT_REMOVED" = true ]; then
+      if [ "$JSON" = false ]; then
+        printf "🧹 Worktree '%s' removed\n" "$CUR_TOP"
+      fi
+      # The main worktree's HEAD may not be the target, so 'git branch -d' would
+      # judge "merged" against the wrong ref. Verify against the merge target.
+      if git merge-base --is-ancestor "$CURRENT" "$LAST_TARGET" 2>/dev/null; then
+        DEL_FLAG="-D"
+      fi
+    fi
+  fi
+fi
+
+# Never try to delete the branch we are still standing on (happens when every
+# target was merged in another worktree and this checkout kept the flow branch).
+if [[ "$DEL_CHOICE" =~ ^[Yy]$ ]] \
+   && [ "$(git symbolic-ref --short HEAD 2>/dev/null || echo "")" = "$CURRENT" ]; then
+  DEL_CHOICE="n"
+  if [ "$JSON" = false ]; then
+    printf "⚠️  Branch '%s' is still checked out here — kept. Switch branches and run: git branch -d %s\n" "$CURRENT" "$CURRENT"
+  fi
+fi
+
 if [[ "$DEL_CHOICE" =~ ^[Yy]$ ]]; then
-  if ! git branch -d "$CURRENT"; then
+  if ! git branch "$DEL_FLAG" "$CURRENT"; then
     if [ "$AUTO_YES" = true ]; then
       FORCE_DEL="y"
     else
@@ -331,8 +428,8 @@ if [ "$JSON" = true ]; then
   else
     TAG_JSON="null"
   fi
-  printf '{"status":"ok","branch":"%s","merged_into":%s,"tag":%s,"pushed":%s,"deleted":%s}\n' \
-    "$CURRENT" "$MERGED_JSON" "$TAG_JSON" "$PUSHED" "$DELETED"
+  printf '{"status":"ok","branch":"%s","merged_into":%s,"tag":%s,"pushed":%s,"deleted":%s,"worktree_removed":%s}\n' \
+    "$CURRENT" "$MERGED_JSON" "$TAG_JSON" "$PUSHED" "$DELETED" "$WT_REMOVED"
 else
   printf "\n🎉 Done! → \"%s\"\n" "$(echo "$FULL_MSG" | head -n 1)"
 fi

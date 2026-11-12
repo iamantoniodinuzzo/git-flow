@@ -187,9 +187,9 @@ Deletes the local branch after successful merges. `main`/`master`/`develop` are 
 | Alias | Script / Command | Description |
 |---|---|---|
 | `git init-flow` | inline shell function | Creates `develop` branch from `main`/`master` and pushes to origin |
-| `git start <type> <name> [--json] [--no-issue]` | `git-start-script.sh` | Creates branch from correct base after pulling latest |
+| `git start <type> <name> [--json] [--no-issue] [--worktree [<path>]]` | `git-start-script.sh` | Creates branch from correct base after pulling latest; with `--worktree`, creates it in a new linked worktree (default `../<repo-dir>_wt_<name>`) without moving the main checkout |
 | `git c [-m <subject>] [--body <text>] [--json]` | `git-commit-script.sh` | Interactive CC commit with editor template, or non-interactive with `-m` |
-| `git finish [--yes\|--json]` | `git-finish-script.sh` | Auto-generated merge message + close issue + optional tag |
+| `git finish [--yes\|--json] [--keep-worktree]` | `git-finish-script.sh` | Auto-generated merge message + close issue + optional tag; from a linked worktree it also removes the worktree (unless `--keep-worktree`) |
 | `git publish [--json]` | `git-publish-script.sh` | Push current branch to origin |
 | `git st-flow` | inline grep | List all active flow branches |
 | `git sync` | inline | Checkout develop + pull |
@@ -204,6 +204,9 @@ All scriptable commands (`git start`, `git c`, `git finish`, `git publish`) acce
 // git start feature 42_foo --json
 {"status":"ok","branch":"feature/42_foo","base":"develop"}
 
+// git start feature 42_foo --worktree --json
+{"status":"ok","branch":"feature/42_foo","base":"develop","worktree":"/abs/path/repo_wt_42_foo"}
+
 // git c -m "feat(auth): add login retry" --json
 {"status":"ok","branch":"feature/42_foo","sha":"abc123","message":"feat(auth): add login retry (ref #42)"}
 
@@ -211,7 +214,7 @@ All scriptable commands (`git start`, `git c`, `git finish`, `git publish`) acce
 {"status":"ok","branch":"feature/42_foo","remote":"origin"}
 
 // git finish --json
-{"status":"ok","branch":"feature/42_foo","merged_into":["develop"],"tag":null,"pushed":true,"deleted":true}
+{"status":"ok","branch":"feature/42_foo","merged_into":["develop"],"tag":null,"pushed":true,"deleted":true,"worktree_removed":false}
 ```
 
 **Error shape (all commands):**
@@ -220,9 +223,25 @@ All scriptable commands (`git start`, `git c`, `git finish`, `git publish`) acce
 {"status":"error","code":"dirty_working_tree","message":"Clean your working directory before merging. Commit or stash changes."}
 ```
 
-Known error codes: `dirty_working_tree`, `not_on_branch`, `no_main_branch`, `develop_missing`, `no_commits`, `merge_conflict`, `tag_failed`, `checkout_failed`, `push_failed`, `detached_head`, `usage`, `unknown_flag`, `on_protected_branch`, `nothing_staged`, `json_requires_message`, `empty_message`.
+Known error codes: `dirty_working_tree`, `not_on_branch`, `no_main_branch`, `develop_missing`, `no_commits`, `merge_conflict`, `tag_failed`, `checkout_failed`, `push_failed`, `detached_head`, `usage`, `unknown_flag`, `on_protected_branch`, `nothing_staged`, `json_requires_message`, `empty_message`, `in_linked_worktree`, `worktree_path_exists`, `worktree_add_failed`, `fetch_failed`, `target_worktree_dirty`.
 
 `--json` implies `--yes` for `git finish` (interactive prompts would interleave with the JSON stream).
+
+### Parallel work with worktrees
+
+Each issue can live in its own linked worktree, so several agents or terminals can work side by side:
+
+```bash
+git start feature 42_foo --worktree      # new worktree ../<repo-dir>_wt_42_foo, branch cut from origin/develop
+cd ../<repo-dir>_wt_42_foo
+git c -m "feat: foo"                     # git c / git publish work unchanged
+git finish                               # merge into develop, push, remove the worktree, delete the branch
+```
+
+- `git start --worktree` never moves the main checkout. The branch is cut from `origin/develop` (local `develop` when there is no remote, or when local `develop` is ahead of origin). Pass `--worktree <path>` to choose the location; errors: `worktree_path_exists`, `worktree_add_failed`, `fetch_failed`.
+- `git start` without `--worktree` inside a linked worktree stops with `in_linked_worktree`.
+- `git finish` run in a linked worktree merges in whichever worktree has the target checked out (that worktree must be clean, else `target_worktree_dirty`); if none has it, the target is checked out in the current worktree. It then removes the worktree and deletes the branch (`"worktree_removed":true`). Untracked files in the linked worktree count as dirty. `--keep-worktree` merges but keeps both the worktree and the branch.
+- `git sync` is meant for the main checkout.
 
 ---
 
